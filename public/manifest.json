@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "My Injected Extension",
+  "version": "1.0.0",
+  "description": "Extension that injects into web pages",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.jsx"]
+    }
+  ],
+  "permissions": ["activeTab"]
+}

@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@layer base {
+  :host {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+  }
+}
