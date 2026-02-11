@@ -8,3 +8,8 @@
     line-height: 1.5;
   }
 }
+
+.writing-mode-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
