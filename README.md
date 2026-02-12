@@ -43,6 +43,7 @@ npm run build
    - B1: `URL`
    - C1: `Job Title`
    - D1: `Company`
+   - E1: `More`
 3. Copy the Sheet ID from the URL (the long string between `/d/` and `/edit`)
 
 #### Create a Service Account
@@ -102,6 +103,7 @@ npm run build
 2. Click "Track Current Page" to auto-extract info, or fill in manually:
    - Job Title
    - Company
+   - More (work type, job type, salary, security clearance)
    - URL
    - Date & Time
 3. Click "Save to Sheets"
@@ -149,6 +151,7 @@ tracker-extension/
 The extension automatically detects and extracts:
 - **Job Title**: From page heading, URL, or page title
 - **Company Name**: From page content, URL, or subdomain
+- **More**: Work type, job type, salary/range, and security clearance cues
 - **URL**: Current page URL
 - **Platform**: Identifies the job board (Greenhouse, Lever, etc.)
 

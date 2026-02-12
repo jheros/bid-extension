@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TabBtn from "./ui/TabBtn";
 import { extractJobInfo } from "../utils/jobExtractor";
 import { getBangkokDateTimeLocal, formatDateTime } from "../utils/datetime";
@@ -11,6 +11,7 @@ export default function App() {
   // Track form state
   const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
+  const [more, setMore] = useState("");
   const [url, setUrl] = useState("");
   const [datetime, setDatetime] = useState("");
   
@@ -32,6 +33,7 @@ export default function App() {
     const jobInfo = extractJobInfo();
     if (jobInfo.jobTitle) setJobTitle(jobInfo.jobTitle);
     if (jobInfo.company) setCompany(jobInfo.company);
+    if (jobInfo.more) setMore(jobInfo.more);
   }, []);
 
   // Load saved settings
@@ -52,10 +54,10 @@ export default function App() {
   };
 
   // Show status message
-  const showStatus = (text, type = "info") => {
+  const showStatus = useCallback((text, type = "info") => {
     setStatusMessage({ text, type });
     setTimeout(() => setStatusMessage({ text: "", type: "" }), 5000);
-  };
+  }, []);
 
   // Show service account status
   const showServiceAccountStatus = (text, type = "success") => {
@@ -64,13 +66,14 @@ export default function App() {
   };
 
   // Track current page
-  const handleTrackCurrentPage = () => {
+  const handleTrackCurrentPage = useCallback(() => {
     const jobInfo = extractJobInfo();
     setJobTitle(jobInfo.jobTitle || "");
     setCompany(jobInfo.company || "");
+    setMore(jobInfo.more || "");
     setUrl(jobInfo.url || window.location.href);
     showStatus("Page info extracted! Please review and save.", "success");
-  };
+  }, [showStatus]);
 
   // Save to Google Sheets
   const handleSubmit = async (e) => {
@@ -86,6 +89,7 @@ export default function App() {
     const data = {
       jobTitle,
       company,
+      more,
       url,
       datetime: formatDateTime(datetime)
     };
@@ -98,6 +102,7 @@ export default function App() {
           // Clear form
           setJobTitle("");
           setCompany("");
+          setMore("");
           setUrl("");
           setDatetime(getBangkokDateTimeLocal());
         } else {
@@ -164,7 +169,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [handleTrackCurrentPage]);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-2147483647 whitespace-normal">
@@ -249,6 +254,19 @@ export default function App() {
                     placeholder="e.g., Google"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    More
+                  </label>
+                  <textarea
+                    value={more}
+                    onChange={(e) => setMore(e.target.value)}
+                    placeholder="Auto-detected: work type, job type, salary, clearance..."
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   />
                 </div>
 
@@ -393,7 +411,7 @@ export default function App() {
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="text-sm font-semibold text-blue-900 mb-2">Setup Guide</h3>
                   <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                    <li>Create a Google Sheet with headers: Date & Time, URL, Job Title, Company</li>
+                    <li>Create a Google Sheet with headers: Date & Time, URL, Job Title, Company, More</li>
                     <li>Create a service account in Google Cloud Console</li>
                     <li>Download the service account JSON file</li>
                     <li>Share your Google Sheet with the service account email</li>

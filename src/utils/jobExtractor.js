@@ -186,6 +186,99 @@ function cleanCompanyName(company) {
     .trim();
 }
 
+function getPageText() {
+  return (document.body?.innerText || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40000);
+}
+
+function detectWorkType(text) {
+  const found = [];
+
+  if (/\bremote\b|\bwork from home\b|\bwfh\b/i.test(text)) {
+    found.push("Remote");
+  }
+  if (/\bhybrid\b|\bflexible location\b|\bpartially remote\b/i.test(text)) {
+    found.push("Hybrid");
+  }
+  if (
+    /\bon[- ]?site\b|\bin[- ]?office\b|\bon[- ]?premise\b|\bon premises\b/i.test(
+      text
+    )
+  ) {
+    found.push("Onsite");
+  }
+
+  return [...new Set(found)];
+}
+
+function detectJobType(text) {
+  const found = [];
+
+  if (/\bfull[- ]?time\b/i.test(text)) found.push("Full-time");
+  if (/\bpart[- ]?time\b/i.test(text)) found.push("Part-time");
+  if (/\bcontract(or)?\b|\bcontract[- ]?to[- ]?hire\b/i.test(text)) {
+    found.push("Contract");
+  }
+  if (/\bintern(ship)?\b/i.test(text)) found.push("Internship");
+  if (/\btemporary\b|\btemp\b/i.test(text)) found.push("Temporary");
+
+  return [...new Set(found)];
+}
+
+function detectSalary(text) {
+  const patterns = [
+    /\$\s?\d{1,3}(?:,\d{3})+(?:\.\d+)?\s*(?:-|–|—|to)\s*\$\s?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s*\/\s*(?:year|yr|month|mo|hour|hr))?/i,
+    /\$\s?\d{2,4}(?:\.\d+)?\s*(?:-|–|—|to)\s*\$\s?\d{2,4}(?:\.\d+)?(?:\s*\/\s*(?:year|yr|month|mo|hour|hr))?/i,
+    /\$\s?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s*\/\s*(?:year|yr|month|mo|hour|hr))?/i,
+    /\b(?:salary|compensation|pay)\b[^.]{0,80}\$\s?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s*(?:-|–|—|to)\s*\$\s?\d{1,3}(?:,\d{3})+(?:\.\d+)?)?/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[0].trim();
+  }
+
+  return "";
+}
+
+function detectSecurityClearance(text) {
+  const found = [];
+
+  if (
+    /\bsecurity clearance\b|\bclearance required\b|\bmust be clearable\b/i.test(
+      text
+    )
+  ) {
+    found.push("Clearance required");
+    if (/\bsecret clearance\b|\bsecret\b/i.test(text)) found.push("Secret");
+  }
+  if (/\bpublic trust\b/i.test(text)) found.push("Public Trust");
+  if (/\btop secret\b|\bts\/sci\b|\bts sci\b/i.test(text)) {
+    found.push("Top Secret / TS-SCI");
+  }
+
+  return [...new Set(found)];
+}
+
+function buildMoreField(text) {
+  const workTypes = detectWorkType(text);
+  const jobTypes = detectJobType(text);
+  const salary = detectSalary(text);
+  const clearance = detectSecurityClearance(text);
+
+  const parts = [];
+  if (workTypes.length) parts.push(`Work type: ${workTypes.join(", ")}`);
+  if (jobTypes.length) parts.push(`Job type: ${jobTypes.join(", ")}`);
+  if (salary) parts.push(`Salary: ${salary}`);
+  if (clearance.length) {
+    parts.push(`Security clearance: ${clearance.join(", ")}`);
+  }
+
+  return parts.join("\n");
+}
+
 // Extract job information from page
 export function extractJobInfo() {
   const platform = detectPlatform();
@@ -235,11 +328,15 @@ export function extractJobInfo() {
   if (company) {
     company = cleanCompanyName(company);
   }
+
+  const pageText = getPageText();
+  const more = buildMoreField(pageText);
   
   return {
     jobTitle: jobTitle || '',
     company: company || '',
     url: jobURL,
-    platform: platform
+    platform: platform,
+    more: more || ''
   };
 }

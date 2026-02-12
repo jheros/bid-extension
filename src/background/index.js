@@ -169,7 +169,7 @@ async function getAccessToken() {
 
 // Fetch existing rows from Google Sheet
 async function getSheetValues(accessToken, sheetId, sheetName) {
-  const range = `${encodeURIComponent(sheetName)}!A:D`;
+  const range = `${encodeURIComponent(sheetName)}!A:E`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
 
   const response = await fetch(url, {
@@ -257,11 +257,12 @@ async function saveToGoogleSheets(data) {
       data.datetime || data.date,
       data.url,
       data.jobTitle,
-      data.company
+      data.company,
+      data.more || ""
     ]];
 
     // Google Sheets API endpoint - use configured sheet name
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A:D:append?valueInputOption=USER_ENTERED`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A:E:append?valueInputOption=USER_ENTERED`;
 
     const response = await fetch(url, {
       method: 'POST',
