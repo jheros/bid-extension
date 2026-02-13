@@ -266,7 +266,7 @@ export default function App() {
                     onChange={(e) => setMore(e.target.value)}
                     placeholder="Auto-detected: work type, job type, salary, clearance..."
                     rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                    className="w-full h-[150px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   />
                 </div>
 

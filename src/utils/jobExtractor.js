@@ -46,6 +46,40 @@ const platformSelectors = {
   }
 };
 
+const locationSelectorsByPlatform = {
+  linkedin: [
+    ".job-details-jobs-unified-top-card__primary-description-container",
+    ".job-details-jobs-unified-top-card__bullet",
+    ".jobs-unified-top-card__bullet"
+  ],
+  indeed: [
+    '[data-testid="job-location"]',
+    ".jobsearch-JobInfoHeader-subtitle div",
+    '[data-testid="inlineHeader-companyLocation"]'
+  ],
+  greenhouse: [
+    '[data-qa="job-location"]',
+    ".location",
+    '[class*="location"]'
+  ],
+  lever: [
+    ".posting-categories .location",
+    ".sort-by-location",
+    '[class*="location"]'
+  ],
+  workday: [
+    '[data-automation-id="locations"]',
+    '[data-automation-id="location"]',
+    '[class*="location"]'
+  ],
+  default: [
+    '[data-testid*="location"]',
+    '[class*="location"]',
+    '[id*="location"]',
+    '[aria-label*="location" i]'
+  ]
+};
+
 // Detect platform from URL
 export function detectPlatform() {
   const hostname = window.location.hostname;
@@ -186,11 +220,39 @@ function cleanCompanyName(company) {
     .trim();
 }
 
+function cleanLocation(location) {
+  if (!location) return "";
+
+  return location
+    .replace(/\b(location|job location)\b\s*[:-]?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/[|•·]+$/g, "")
+    .trim();
+}
+
 function getPageText() {
   return (document.body?.innerText || "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 40000);
+}
+
+function detectLocationFromText(text) {
+  const patterns = [
+    /\b(?:location|job location|office location)\b\s*[:-]\s*(.{2,80}?)(?=\s(?:department|salary|compensation|employment type|job type|benefits|responsibilities|requirements|apply)\b|$)/i,
+    /\bbased in\s+(.{2,60}?)(?=\s(?:department|salary|compensation|employment type|job type|benefits|responsibilities|requirements|apply)\b|$)/i,
+    /\blocated in\s+(.{2,60}?)(?=\s(?:department|salary|compensation|employment type|job type|benefits|responsibilities|requirements|apply)\b|$)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      const candidate = cleanLocation(match[1]);
+      if (candidate) return candidate;
+    }
+  }
+
+  return "";
 }
 
 function detectWorkType(text) {
@@ -262,13 +324,14 @@ function detectSecurityClearance(text) {
   return [...new Set(found)];
 }
 
-function buildMoreField(text) {
+function buildMoreField(text, location) {
   const workTypes = detectWorkType(text);
   const jobTypes = detectJobType(text);
   const salary = detectSalary(text);
   const clearance = detectSecurityClearance(text);
 
   const parts = [];
+  if (location) parts.push(`Location: ${location}`);
   if (workTypes.length) parts.push(`Work type: ${workTypes.join(", ")}`);
   if (jobTypes.length) parts.push(`Job type: ${jobTypes.join(", ")}`);
   if (salary) parts.push(`Salary: ${salary}`);
@@ -330,7 +393,16 @@ export function extractJobInfo() {
   }
 
   const pageText = getPageText();
-  const more = buildMoreField(pageText);
+  const locationSelectors =
+    locationSelectorsByPlatform[platform] || locationSelectorsByPlatform.default;
+  let location = findBySelectors(locationSelectors);
+
+  if (!location) {
+    location = detectLocationFromText(pageText);
+  }
+
+  location = cleanLocation(location);
+  const more = buildMoreField(pageText, location);
   
   return {
     jobTitle: jobTitle || '',
