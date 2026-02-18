@@ -4,6 +4,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'SHOW_NOTIFICATION') {
     chrome.notifications.create({
       type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon48.png'),
       title: request.data.title || 'Job Application Tracker',
       message: request.data.message || '',
       priority: 1
@@ -20,6 +21,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then(result => {
         chrome.notifications.create({
           type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon48.png'),
           title: 'Job Application Saved!',
           message: `${request.data.jobTitle || 'Application'} at ${request.data.company || 'Company'} saved successfully.`,
           priority: 2
@@ -30,6 +32,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (error.message === 'DUPLICATE_APPLICATION') {
           chrome.notifications.create({
             type: 'basic',
+            iconUrl: chrome.runtime.getURL('icons/icon48.png'),
             title: 'DUPLICATE APPLICATION WARNING',
             message: `You have already applied to "${request.data.jobTitle || 'this position'}" at ${request.data.company || 'this company'}!`,
             priority: 2,
@@ -40,6 +43,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         chrome.notifications.create({
           type: 'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon48.png'),
           title: 'Save Failed',
           message: `Could not save application. Error: ${error.message}`,
           priority: 2

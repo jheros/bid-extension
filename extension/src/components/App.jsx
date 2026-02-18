@@ -129,7 +129,7 @@ export default function App() {
 
       const aiSettings = await chrome.storage.local.get(["useAiExtractor"]);
       if (aiSettings.useAiExtractor) {
-        if (!silent) showStatus("Extracting with DeepSeek...", "info");
+        if (!silent) showStatus("Extracting with AI...", "info");
         const aiResponse = await requestAIExtraction(fallbackInfo);
         if (aiResponse?.success && aiResponse.result) {
           finalInfo = mergeJobInfo(fallbackInfo, aiResponse.result);
