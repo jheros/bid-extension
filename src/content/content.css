@@ -22,6 +22,21 @@
     --tw-scale-x: 1;
     --tw-scale-y: 1;
     --tw-scale-z: 1;
+    /*
+      Tailwind border utilities in v4 use --tw-border-style.
+      If a host page defines this custom property, it can leak into shadow descendants.
+      Force a stable default so border/border-* classes render consistently.
+    */
+    --tw-border-style: solid !important;
+    --tw-border-color: rgb(209 213 219) !important;
+    --tw-ring-color: rgb(107 114 128 / 0.35) !important;
+  }
+
+  :host input:focus,
+  :host textarea:focus,
+  :host select:focus {
+    border-color: rgb(107 114 128) !important;
+    --tw-border-style: solid !important;
   }
 }
 

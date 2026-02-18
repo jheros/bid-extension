@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { X } from "lucide-react";
 import TabBtn from "./ui/TabBtn";
 import { extractJobInfo } from "../utils/jobExtractor";
 import { getBangkokDateTimeLocal, formatDateTime } from "../utils/datetime";
@@ -9,7 +10,7 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
-  
+
   // Track form state
   const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
@@ -20,7 +21,7 @@ export default function App() {
   const [securityClearance, setSecurityClearance] = useState("");
   const [url, setUrl] = useState("");
   const [datetime, setDatetime] = useState("");
-  
+
   // Settings state
   const [sheetId, setSheetId] = useState("");
   const [sheetName, setSheetName] = useState("Sheet1");
@@ -28,18 +29,21 @@ export default function App() {
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [deepseekModel, setDeepseekModel] = useState("deepseek-chat");
   const [serviceAccountJson, setServiceAccountJson] = useState("");
-  const [serviceAccountStatus, setServiceAccountStatus] = useState({ text: "", type: "" });
+  const [serviceAccountStatus, setServiceAccountStatus] = useState({
+    text: "",
+    type: "",
+  });
 
   // Load saved settings
   const loadSettings = async () => {
     try {
       const result = await chrome.storage.local.get([
-        'sheetId',
-        'sheetName',
-        'serviceAccount',
-        'useAiExtractor',
-        'deepseekApiKey',
-        'deepseekModel'
+        "sheetId",
+        "sheetName",
+        "serviceAccount",
+        "useAiExtractor",
+        "deepseekApiKey",
+        "deepseekModel",
       ]);
       if (result.sheetId) setSheetId(result.sheetId);
       if (result.sheetName) setSheetName(result.sheetName);
@@ -49,11 +53,11 @@ export default function App() {
       if (result.serviceAccount) {
         setServiceAccountStatus({
           text: `✓ Service account configured (${result.serviceAccount.client_email})`,
-          type: "success"
+          type: "success",
         });
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error("Error loading settings:", error);
     }
   };
 
@@ -63,26 +67,32 @@ export default function App() {
     setTimeout(() => setStatusMessage({ text: "", type: "" }), 5000);
   }, []);
 
-  const fetchStats = useCallback(async ({ silent = false } = {}) => {
-    setStatsLoading(true);
-    try {
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'GET_APPLICATION_STATS' }, (res) =>
-          resolve(res)
-        );
-      });
+  const fetchStats = useCallback(
+    async ({ silent = false } = {}) => {
+      setStatsLoading(true);
+      try {
+        const response = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ type: "GET_APPLICATION_STATS" }, (res) =>
+            resolve(res),
+          );
+        });
 
-      if (response?.success) {
-        setStats(response.result);
-      } else if (!silent) {
-        showStatus(`Stats error: ${response?.error || 'Unknown error'}`, "error");
+        if (response?.success) {
+          setStats(response.result);
+        } else if (!silent) {
+          showStatus(
+            `Stats error: ${response?.error || "Unknown error"}`,
+            "error",
+          );
+        }
+      } catch (error) {
+        if (!silent) showStatus(`Stats error: ${error.message}`, "error");
+      } finally {
+        setStatsLoading(false);
       }
-    } catch (error) {
-      if (!silent) showStatus(`Stats error: ${error.message}`, "error");
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [showStatus]);
+    },
+    [showStatus],
+  );
 
   // Show service account status
   const showServiceAccountStatus = (text, type = "success") => {
@@ -91,67 +101,82 @@ export default function App() {
   };
 
   const getPageTextForAI = () =>
-    (document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 24000);
+    (document.body?.innerText || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 24000);
 
-  const requestAIExtraction = useCallback((fallback) =>
-    new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        {
-          type: 'EXTRACT_JOB_INFO_AI',
-          data: {
-            url: window.location.href,
-            pageTitle: document.title || "",
-            pageText: getPageTextForAI(),
-            fallback
-          }
-        },
-        (response) => resolve(response)
-      );
-    }), []);
+  const requestAIExtraction = useCallback(
+    (fallback) =>
+      new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          {
+            type: "EXTRACT_JOB_INFO_AI",
+            data: {
+              url: window.location.href,
+              pageTitle: document.title || "",
+              pageText: getPageTextForAI(),
+              fallback,
+            },
+          },
+          (response) => resolve(response),
+        );
+      }),
+    [],
+  );
 
-  const mergeJobInfo = useCallback((fallback, aiResult) => ({
-    jobTitle: aiResult?.jobTitle || fallback.jobTitle || "",
-    company: aiResult?.company || fallback.company || "",
-    location: aiResult?.location || fallback.location || "",
-    workType: aiResult?.workType || fallback.workType || "",
-    jobType: aiResult?.jobType || fallback.jobType || "",
-    salary: aiResult?.salary || fallback.salary || "",
-    securityClearance:
-      aiResult?.securityClearance || fallback.securityClearance || "",
-    url: fallback.url || window.location.href
-  }), []);
+  const mergeJobInfo = useCallback(
+    (fallback, aiResult) => ({
+      jobTitle: aiResult?.jobTitle || fallback.jobTitle || "",
+      company: aiResult?.company || fallback.company || "",
+      location: aiResult?.location || fallback.location || "",
+      workType: aiResult?.workType || fallback.workType || "",
+      jobType: aiResult?.jobType || fallback.jobType || "",
+      salary: aiResult?.salary || fallback.salary || "",
+      securityClearance:
+        aiResult?.securityClearance || fallback.securityClearance || "",
+      url: fallback.url || window.location.href,
+    }),
+    [],
+  );
 
   // Track current page
-  const handleTrackCurrentPage = useCallback(async ({ silent = false } = {}) => {
-    const fallbackInfo = extractJobInfo();
-    let finalInfo = fallbackInfo;
-    let aiFailed = false;
+  const handleTrackCurrentPage = useCallback(
+    async ({ silent = false } = {}) => {
+      const fallbackInfo = extractJobInfo();
+      let finalInfo = fallbackInfo;
+      let aiFailed = false;
 
-    const aiSettings = await chrome.storage.local.get(['useAiExtractor']);
-    if (aiSettings.useAiExtractor) {
-      if (!silent) showStatus("Extracting with DeepSeek...", "info");
-      const aiResponse = await requestAIExtraction(fallbackInfo);
-      if (aiResponse?.success && aiResponse.result) {
-        finalInfo = mergeJobInfo(fallbackInfo, aiResponse.result);
-      } else if (!silent) {
-        aiFailed = true;
-        showStatus(`AI extraction failed, used fallback parser: ${aiResponse?.error || "Unknown error"}`, "error");
+      const aiSettings = await chrome.storage.local.get(["useAiExtractor"]);
+      if (aiSettings.useAiExtractor) {
+        if (!silent) showStatus("Extracting with DeepSeek...", "info");
+        const aiResponse = await requestAIExtraction(fallbackInfo);
+        if (aiResponse?.success && aiResponse.result) {
+          finalInfo = mergeJobInfo(fallbackInfo, aiResponse.result);
+        } else if (!silent) {
+          aiFailed = true;
+          showStatus(
+            `AI extraction failed, used fallback parser: ${aiResponse?.error || "Unknown error"}`,
+            "error",
+          );
+        }
       }
-    }
 
-    setJobTitle(finalInfo.jobTitle || "");
-    setCompany(finalInfo.company || "");
-    setLocation(finalInfo.location || "");
-    setWorkType(finalInfo.workType || "");
-    setJobType(finalInfo.jobType || "");
-    setSalary(finalInfo.salary || "");
-    setSecurityClearance(finalInfo.securityClearance || "");
-    setUrl(finalInfo.url || window.location.href);
+      setJobTitle(finalInfo.jobTitle || "");
+      setCompany(finalInfo.company || "");
+      setLocation(finalInfo.location || "");
+      setWorkType(finalInfo.workType || "");
+      setJobType(finalInfo.jobType || "");
+      setSalary(finalInfo.salary || "");
+      setSecurityClearance(finalInfo.securityClearance || "");
+      setUrl(finalInfo.url || window.location.href);
 
-    if (!silent && !aiFailed) {
-      showStatus("Page info extracted! Please review and save.", "success");
-    }
-  }, [mergeJobInfo, requestAIExtraction, showStatus]);
+      if (!silent && !aiFailed) {
+        showStatus("Page info extracted! Please review and save.", "success");
+      }
+    },
+    [mergeJobInfo, requestAIExtraction, showStatus],
+  );
 
   // Initialize form with current page info
   useEffect(() => {
@@ -180,30 +205,27 @@ export default function App() {
       salary,
       securityClearance,
       url,
-      datetime: formatDateTime(datetime)
+      datetime: formatDateTime(datetime),
     };
 
-    chrome.runtime.sendMessage(
-      { type: 'SAVE_TO_SHEETS', data },
-      (response) => {
-        if (response?.success) {
-          showStatus("✅ Successfully saved to Google Sheets!", "success");
-          // Clear form
-          setJobTitle("");
-          setCompany("");
-          setLocation("");
-          setWorkType("");
-          setJobType("");
-          setSalary("");
-          setSecurityClearance("");
-          setUrl("");
-          setDatetime(getBangkokDateTimeLocal());
-          void fetchStats({ silent: true });
-        } else {
-          showStatus(`Error: ${response?.error || 'Unknown error'}`, "error");
-        }
+    chrome.runtime.sendMessage({ type: "SAVE_TO_SHEETS", data }, (response) => {
+      if (response?.success) {
+        showStatus("✅ Successfully saved to Google Sheets!", "success");
+        // Clear form
+        setJobTitle("");
+        setCompany("");
+        setLocation("");
+        setWorkType("");
+        setJobType("");
+        setSalary("");
+        setSecurityClearance("");
+        setUrl("");
+        setDatetime(getBangkokDateTimeLocal());
+        void fetchStats({ silent: true });
+      } else {
+        showStatus(`Error: ${response?.error || "Unknown error"}`, "error");
       }
-    );
+    });
   };
 
   // Save service account
@@ -217,20 +239,25 @@ export default function App() {
       const serviceAccount = JSON.parse(serviceAccountJson);
 
       if (!serviceAccount.client_email || !serviceAccount.private_key) {
-        throw new Error("Invalid service account JSON: missing required fields");
+        throw new Error(
+          "Invalid service account JSON: missing required fields",
+        );
       }
 
       await chrome.storage.local.set({ serviceAccount });
-      await chrome.storage.local.remove(['cachedToken', 'tokenExpiry']);
+      await chrome.storage.local.remove(["cachedToken", "tokenExpiry"]);
 
-      showServiceAccountStatus("✅ Service account saved successfully!", "success");
+      showServiceAccountStatus(
+        "✅ Service account saved successfully!",
+        "success",
+      );
       setServiceAccountJson("");
-      
+
       // Update status display
       setTimeout(() => {
-        setServiceAccountStatus({ 
-          text: `✓ Service account configured (${serviceAccount.client_email})`, 
-          type: "success" 
+        setServiceAccountStatus({
+          text: `✓ Service account configured (${serviceAccount.client_email})`,
+          type: "success",
         });
       }, 2000);
     } catch (error) {
@@ -243,10 +270,10 @@ export default function App() {
     e.preventDefault();
 
     const payload = {
-      sheetName: sheetName || 'Sheet1',
+      sheetName: sheetName || "Sheet1",
       useAiExtractor,
       deepseekApiKey: deepseekApiKey.trim(),
-      deepseekModel: deepseekModel.trim() || 'deepseek-chat'
+      deepseekModel: deepseekModel.trim() || "deepseek-chat",
     };
 
     if (sheetId.trim()) {
@@ -255,7 +282,10 @@ export default function App() {
 
     await chrome.storage.local.set(payload);
     if (!sheetId.trim()) {
-      showStatus("✅ Settings saved. Add Sheet ID before saving applications.", "info");
+      showStatus(
+        "✅ Settings saved. Add Sheet ID before saving applications.",
+        "info",
+      );
       return;
     }
 
@@ -265,29 +295,57 @@ export default function App() {
   // Listen for F9 keypress
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.key === 'F9') {
+      if (e.key === "F9") {
         e.preventDefault();
         setIsOpen(true);
         void handleTrackCurrentPage();
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, [handleTrackCurrentPage]);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-2147483647 whitespace-normal">
       <aside
-        className={`fixed right-0 top-[15vh] h-[70vh] w-[420px] bg-white shadow-2xl border-l border-gray-200 pointer-events-auto transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-[15vh] h-[70vh] w-[420px] bg-white shadow-2xl border-2 border-gray-700 rounded-lg pointer-events-auto transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="bg-gray-800 text-white px-6 py-4">
-            <h1 className="text-xl font-semibold">Job Application Tracker</h1>
-            <p className="text-sm text-gray-300 mt-1">Press F9 to quick track</p>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-semibold">Job Application Tracker</h1>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 rounded border border-gray-300 bg-white text-gray-800 hover:bg-gray-100 transition-colors"
+                aria-label="Close sidebar"
+                title="Close sidebar"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-300 mt-1">
+              Press F9 to quick track
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition-colors font-medium"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={handleTrackCurrentPage}
+                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Track
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -323,8 +381,8 @@ export default function App() {
                   statusMessage.type === "success"
                     ? "bg-green-50 text-green-800 border border-green-200"
                     : statusMessage.type === "error"
-                    ? "bg-red-50 text-red-800 border border-red-200"
-                    : "bg-blue-50 text-blue-800 border border-blue-200"
+                      ? "bg-red-50 text-red-800 border border-red-200"
+                      : "bg-blue-50 text-blue-800 border border-blue-200"
                 }`}
               >
                 {statusMessage.text}
@@ -454,22 +512,6 @@ export default function App() {
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium"
-                  >
-                    Save to Sheets
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTrackCurrentPage}
-                    className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Track Current Page
-                  </button>
-                </div>
-
                 <div className="pt-2 border-t border-gray-200">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-gray-900">
@@ -487,25 +529,35 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     <div className="p-2 rounded bg-gray-50 border border-gray-200">
                       <p className="text-xs text-gray-500">Day</p>
-                      <p className="text-lg font-semibold">{stats?.day?.total || 0}</p>
+                      <p className="text-lg font-semibold">
+                        {stats?.day?.total || 0}
+                      </p>
                     </div>
                     <div className="p-2 rounded bg-gray-50 border border-gray-200">
                       <p className="text-xs text-gray-500">Week</p>
-                      <p className="text-lg font-semibold">{stats?.week?.total || 0}</p>
+                      <p className="text-lg font-semibold">
+                        {stats?.week?.total || 0}
+                      </p>
                     </div>
                     <div className="p-2 rounded bg-gray-50 border border-gray-200">
                       <p className="text-xs text-gray-500">Month</p>
-                      <p className="text-lg font-semibold">{stats?.month?.total || 0}</p>
+                      <p className="text-lg font-semibold">
+                        {stats?.month?.total || 0}
+                      </p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     {["day", "week", "month"].map((period) => (
-                      <div key={period} className="p-2 rounded bg-white border border-gray-200">
+                      <div
+                        key={period}
+                        className="p-2 rounded bg-white border border-gray-200"
+                      >
                         <p className="text-xs font-medium text-gray-700 capitalize mb-1">
                           {period} by platform
                         </p>
-                        {Object.keys(stats?.[period]?.byPlatform || {}).length === 0 ? (
+                        {Object.keys(stats?.[period]?.byPlatform || {})
+                          .length === 0 ? (
                           <p className="text-xs text-gray-500">No data</p>
                         ) : (
                           <div className="text-xs text-gray-700 space-y-1">
@@ -513,7 +565,8 @@ export default function App() {
                               .sort((a, b) => b[1] - a[1])
                               .map(([platform, count]) => (
                                 <p key={`${period}-${platform}`}>
-                                  <span className="capitalize">{platform}</span>: {count}
+                                  <span className="capitalize">{platform}</span>
+                                  : {count}
                                 </p>
                               ))}
                           </div>
@@ -534,7 +587,8 @@ export default function App() {
                     Service Account Configuration
                   </h3>
                   <p className="text-xs text-gray-600 mb-3">
-                    Upload your service account JSON file or paste the credentials below.
+                    Upload your service account JSON file or paste the
+                    credentials below.
                   </p>
 
                   <div className="mb-3">
@@ -605,7 +659,8 @@ export default function App() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                     />
                     <small className="text-xs text-gray-500">
-                      The name of the sheet/tab where data will be saved (default: Sheet1)
+                      The name of the sheet/tab where data will be saved
+                      (default: Sheet1)
                     </small>
                   </div>
 
@@ -662,14 +717,25 @@ export default function App() {
 
                 {/* Help Section */}
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <h3 className="text-sm font-semibold text-blue-900 mb-2">Setup Guide</h3>
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2">
+                    Setup Guide
+                  </h3>
                   <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                    <li>Create a Google Sheet with headers: Date & Time, URL, Job Title, Company, Location, Work Type, Job Type, Salary, Security Clearance</li>
+                    <li>
+                      Create a Google Sheet with headers: Date & Time, URL, Job
+                      Title, Company, Location, Work Type, Job Type, Salary,
+                      Security Clearance
+                    </li>
                     <li>Create a service account in Google Cloud Console</li>
                     <li>Download the service account JSON file</li>
-                    <li>Share your Google Sheet with the service account email</li>
+                    <li>
+                      Share your Google Sheet with the service account email
+                    </li>
                     <li>Paste the JSON content above and save</li>
-                    <li>Enter your Sheet ID and Sheet Name (tab name) and save settings</li>
+                    <li>
+                      Enter your Sheet ID and Sheet Name (tab name) and save
+                      settings
+                    </li>
                   </ol>
                 </div>
               </div>
