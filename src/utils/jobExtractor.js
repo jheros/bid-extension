@@ -324,24 +324,6 @@ function detectSecurityClearance(text) {
   return [...new Set(found)];
 }
 
-function buildMoreField(text, location) {
-  const workTypes = detectWorkType(text);
-  const jobTypes = detectJobType(text);
-  const salary = detectSalary(text);
-  const clearance = detectSecurityClearance(text);
-
-  const parts = [];
-  if (location) parts.push(`Location: ${location}`);
-  if (workTypes.length) parts.push(`Work type: ${workTypes.join(", ")}`);
-  if (jobTypes.length) parts.push(`Job type: ${jobTypes.join(", ")}`);
-  if (salary) parts.push(`Salary: ${salary}`);
-  if (clearance.length) {
-    parts.push(`Security clearance: ${clearance.join(", ")}`);
-  }
-
-  return parts.join("\n");
-}
-
 // Extract job information from page
 export function extractJobInfo() {
   const platform = detectPlatform();
@@ -402,13 +384,20 @@ export function extractJobInfo() {
   }
 
   location = cleanLocation(location);
-  const more = buildMoreField(pageText, location);
+  const workTypes = detectWorkType(pageText);
+  const jobTypes = detectJobType(pageText);
+  const salary = detectSalary(pageText);
+  const clearance = detectSecurityClearance(pageText);
   
   return {
     jobTitle: jobTitle || '',
     company: company || '',
     url: jobURL,
     platform: platform,
-    more: more || ''
+    location: location || '',
+    workType: workTypes.join(', '),
+    jobType: jobTypes.join(', '),
+    salary: salary || '',
+    securityClearance: clearance.join(', ')
   };
 }

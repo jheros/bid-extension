@@ -19,6 +19,7 @@
   ],
   "host_permissions": [
     "https://sheets.googleapis.com/*",
-    "https://oauth2.googleapis.com/*"
+    "https://oauth2.googleapis.com/*",
+    "https://api.deepseek.com/*"
   ]
 }

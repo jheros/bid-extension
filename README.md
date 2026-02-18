@@ -8,6 +8,7 @@ A Chrome extension that helps you track your job applications and automatically 
 - **Manual Tracking**: Fill in job details manually through the sidebar interface
 - **Google Sheets Integration**: Automatically saves applications to your Google Sheet
 - **Duplicate Detection**: Warns you if you've already applied to the same position
+- **AI Extraction (Optional)**: Use DeepSeek to parse job description text for better extraction
 - **Multi-Platform Support**: Automatically extracts job info from popular job boards:
   - Greenhouse
   - Lever
@@ -43,7 +44,11 @@ npm run build
    - B1: `URL`
    - C1: `Job Title`
    - D1: `Company`
-   - E1: `More`
+   - E1: `Location`
+   - F1: `Work Type`
+   - G1: `Job Type`
+   - H1: `Salary`
+   - I1: `Security Clearance`
 3. Copy the Sheet ID from the URL (the long string between `/d/` and `/edit`)
 
 #### Create a Service Account
@@ -87,6 +92,11 @@ npm run build
    - Paste your Sheet ID
    - Enter the Sheet Name (default is "Sheet1")
    - Click "Save Settings"
+5. **AI Configuration (Optional)**:
+   - Enable "Use DeepSeek for extraction" in Settings
+   - Paste your DeepSeek API key
+   - Set model name (default: `deepseek-chat`)
+   - Save settings
 
 ## Usage
 
@@ -103,7 +113,11 @@ npm run build
 2. Click "Track Current Page" to auto-extract info, or fill in manually:
    - Job Title
    - Company
-   - More (work type, job type, salary, security clearance)
+   - Location
+   - Work Type
+   - Job Type
+   - Salary
+   - Security Clearance
    - URL
    - Date & Time
 3. Click "Save to Sheets"
@@ -151,7 +165,11 @@ tracker-extension/
 The extension automatically detects and extracts:
 - **Job Title**: From page heading, URL, or page title
 - **Company Name**: From page content, URL, or subdomain
-- **More**: Work type, job type, salary/range, and security clearance cues
+- **Location**: Job location from page metadata/text
+- **Work Type**: Remote, Hybrid, Onsite signals
+- **Job Type**: Full-time, Contract, Internship, etc.
+- **Salary**: Salary or salary range when present
+- **Security Clearance**: Clearance requirement cues
 - **URL**: Current page URL
 - **Platform**: Identifies the job board (Greenhouse, Lever, etc.)
 
@@ -195,6 +213,7 @@ This extension:
 - Only activates when you use it (F9 or sidebar button)
 - Stores settings locally in your browser
 - Only sends data to Google Sheets (your own sheet)
+- If AI extraction is enabled, sends page text to DeepSeek API for parsing
 - Does not collect or transmit any data to third parties
 
 ## License

@@ -7,45 +7,49 @@ export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("track");
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   
   // Track form state
   const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
-  const [more, setMore] = useState("");
+  const [location, setLocation] = useState("");
+  const [workType, setWorkType] = useState("");
+  const [jobType, setJobType] = useState("");
+  const [salary, setSalary] = useState("");
+  const [securityClearance, setSecurityClearance] = useState("");
   const [url, setUrl] = useState("");
   const [datetime, setDatetime] = useState("");
   
   // Settings state
   const [sheetId, setSheetId] = useState("");
   const [sheetName, setSheetName] = useState("Sheet1");
+  const [useAiExtractor, setUseAiExtractor] = useState(false);
+  const [deepseekApiKey, setDeepseekApiKey] = useState("");
+  const [deepseekModel, setDeepseekModel] = useState("deepseek-chat");
   const [serviceAccountJson, setServiceAccountJson] = useState("");
   const [serviceAccountStatus, setServiceAccountStatus] = useState({ text: "", type: "" });
-
-  // Initialize form with current page info
-  useEffect(() => {
-    setDatetime(getBangkokDateTimeLocal()); 
-    loadSettings();
-    
-    // Set current page URL
-    setUrl(window.location.href);
-    
-    // Extract job info from current page
-    const jobInfo = extractJobInfo();
-    if (jobInfo.jobTitle) setJobTitle(jobInfo.jobTitle);
-    if (jobInfo.company) setCompany(jobInfo.company);
-    if (jobInfo.more) setMore(jobInfo.more);
-  }, []);
 
   // Load saved settings
   const loadSettings = async () => {
     try {
-      const result = await chrome.storage.local.get(['sheetId', 'sheetName', 'serviceAccount']);
+      const result = await chrome.storage.local.get([
+        'sheetId',
+        'sheetName',
+        'serviceAccount',
+        'useAiExtractor',
+        'deepseekApiKey',
+        'deepseekModel'
+      ]);
       if (result.sheetId) setSheetId(result.sheetId);
       if (result.sheetName) setSheetName(result.sheetName);
+      setUseAiExtractor(Boolean(result.useAiExtractor));
+      setDeepseekApiKey(result.deepseekApiKey || "");
+      setDeepseekModel(result.deepseekModel || "deepseek-chat");
       if (result.serviceAccount) {
-        setServiceAccountStatus({ 
-          text: `✓ Service account configured (${result.serviceAccount.client_email})`, 
-          type: "success" 
+        setServiceAccountStatus({
+          text: `✓ Service account configured (${result.serviceAccount.client_email})`,
+          type: "success"
         });
       }
     } catch (error) {
@@ -59,21 +63,102 @@ export default function App() {
     setTimeout(() => setStatusMessage({ text: "", type: "" }), 5000);
   }, []);
 
+  const fetchStats = useCallback(async ({ silent = false } = {}) => {
+    setStatsLoading(true);
+    try {
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'GET_APPLICATION_STATS' }, (res) =>
+          resolve(res)
+        );
+      });
+
+      if (response?.success) {
+        setStats(response.result);
+      } else if (!silent) {
+        showStatus(`Stats error: ${response?.error || 'Unknown error'}`, "error");
+      }
+    } catch (error) {
+      if (!silent) showStatus(`Stats error: ${error.message}`, "error");
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [showStatus]);
+
   // Show service account status
   const showServiceAccountStatus = (text, type = "success") => {
     setServiceAccountStatus({ text, type });
     setTimeout(() => setServiceAccountStatus({ text: "", type: "" }), 5000);
   };
 
+  const getPageTextForAI = () =>
+    (document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 24000);
+
+  const requestAIExtraction = useCallback((fallback) =>
+    new Promise((resolve) => {
+      chrome.runtime.sendMessage(
+        {
+          type: 'EXTRACT_JOB_INFO_AI',
+          data: {
+            url: window.location.href,
+            pageTitle: document.title || "",
+            pageText: getPageTextForAI(),
+            fallback
+          }
+        },
+        (response) => resolve(response)
+      );
+    }), []);
+
+  const mergeJobInfo = useCallback((fallback, aiResult) => ({
+    jobTitle: aiResult?.jobTitle || fallback.jobTitle || "",
+    company: aiResult?.company || fallback.company || "",
+    location: aiResult?.location || fallback.location || "",
+    workType: aiResult?.workType || fallback.workType || "",
+    jobType: aiResult?.jobType || fallback.jobType || "",
+    salary: aiResult?.salary || fallback.salary || "",
+    securityClearance:
+      aiResult?.securityClearance || fallback.securityClearance || "",
+    url: fallback.url || window.location.href
+  }), []);
+
   // Track current page
-  const handleTrackCurrentPage = useCallback(() => {
-    const jobInfo = extractJobInfo();
-    setJobTitle(jobInfo.jobTitle || "");
-    setCompany(jobInfo.company || "");
-    setMore(jobInfo.more || "");
-    setUrl(jobInfo.url || window.location.href);
-    showStatus("Page info extracted! Please review and save.", "success");
-  }, [showStatus]);
+  const handleTrackCurrentPage = useCallback(async ({ silent = false } = {}) => {
+    const fallbackInfo = extractJobInfo();
+    let finalInfo = fallbackInfo;
+    let aiFailed = false;
+
+    const aiSettings = await chrome.storage.local.get(['useAiExtractor']);
+    if (aiSettings.useAiExtractor) {
+      if (!silent) showStatus("Extracting with DeepSeek...", "info");
+      const aiResponse = await requestAIExtraction(fallbackInfo);
+      if (aiResponse?.success && aiResponse.result) {
+        finalInfo = mergeJobInfo(fallbackInfo, aiResponse.result);
+      } else if (!silent) {
+        aiFailed = true;
+        showStatus(`AI extraction failed, used fallback parser: ${aiResponse?.error || "Unknown error"}`, "error");
+      }
+    }
+
+    setJobTitle(finalInfo.jobTitle || "");
+    setCompany(finalInfo.company || "");
+    setLocation(finalInfo.location || "");
+    setWorkType(finalInfo.workType || "");
+    setJobType(finalInfo.jobType || "");
+    setSalary(finalInfo.salary || "");
+    setSecurityClearance(finalInfo.securityClearance || "");
+    setUrl(finalInfo.url || window.location.href);
+
+    if (!silent && !aiFailed) {
+      showStatus("Page info extracted! Please review and save.", "success");
+    }
+  }, [mergeJobInfo, requestAIExtraction, showStatus]);
+
+  // Initialize form with current page info
+  useEffect(() => {
+    setDatetime(getBangkokDateTimeLocal());
+    loadSettings();
+    void fetchStats({ silent: true });
+  }, [fetchStats]);
 
   // Save to Google Sheets
   const handleSubmit = async (e) => {
@@ -89,7 +174,11 @@ export default function App() {
     const data = {
       jobTitle,
       company,
-      more,
+      location,
+      workType,
+      jobType,
+      salary,
+      securityClearance,
       url,
       datetime: formatDateTime(datetime)
     };
@@ -102,9 +191,14 @@ export default function App() {
           // Clear form
           setJobTitle("");
           setCompany("");
-          setMore("");
+          setLocation("");
+          setWorkType("");
+          setJobType("");
+          setSalary("");
+          setSecurityClearance("");
           setUrl("");
           setDatetime(getBangkokDateTimeLocal());
+          void fetchStats({ silent: true });
         } else {
           showStatus(`Error: ${response?.error || 'Unknown error'}`, "error");
         }
@@ -148,12 +242,23 @@ export default function App() {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
 
-    if (!sheetId) {
-      showStatus("Please enter Sheet ID", "error");
+    const payload = {
+      sheetName: sheetName || 'Sheet1',
+      useAiExtractor,
+      deepseekApiKey: deepseekApiKey.trim(),
+      deepseekModel: deepseekModel.trim() || 'deepseek-chat'
+    };
+
+    if (sheetId.trim()) {
+      payload.sheetId = sheetId.trim();
+    }
+
+    await chrome.storage.local.set(payload);
+    if (!sheetId.trim()) {
+      showStatus("✅ Settings saved. Add Sheet ID before saving applications.", "info");
       return;
     }
 
-    await chrome.storage.local.set({ sheetId, sheetName: sheetName || 'Sheet1' });
     showStatus("✅ Settings saved successfully!", "success");
   };
 
@@ -163,7 +268,7 @@ export default function App() {
       if (e.key === 'F9') {
         e.preventDefault();
         setIsOpen(true);
-        handleTrackCurrentPage();
+        void handleTrackCurrentPage();
       }
     };
 
@@ -259,14 +364,66 @@ export default function App() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    More
+                    Location
                   </label>
-                  <textarea
-                    value={more}
-                    onChange={(e) => setMore(e.target.value)}
-                    placeholder="Auto-detected: work type, job type, salary, clearance..."
-                    rows="3"
-                    className="w-full h-[150px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g., Bangkok, Thailand / Remote"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Work Type
+                  </label>
+                  <input
+                    type="text"
+                    value={workType}
+                    onChange={(e) => setWorkType(e.target.value)}
+                    placeholder="e.g., Remote, Hybrid, Onsite"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Job Type
+                  </label>
+                  <input
+                    type="text"
+                    value={jobType}
+                    onChange={(e) => setJobType(e.target.value)}
+                    placeholder="e.g., Full-time, Contract"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Salary
+                  </label>
+                  <input
+                    type="text"
+                    value={salary}
+                    onChange={(e) => setSalary(e.target.value)}
+                    placeholder="e.g., $90,000 - $120,000 / year"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Security Clearance
+                  </label>
+                  <input
+                    type="text"
+                    value={securityClearance}
+                    onChange={(e) => setSecurityClearance(e.target.value)}
+                    placeholder="e.g., Secret, TS/SCI"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   />
                 </div>
 
@@ -311,6 +468,59 @@ export default function App() {
                   >
                     Track Current Page
                   </button>
+                </div>
+
+                <div className="pt-2 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Application Tracker (Bangkok 08:00 cutoff)
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => void fetchStats()}
+                      className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+                    >
+                      {statsLoading ? "Loading..." : "Refresh"}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                      <p className="text-xs text-gray-500">Day</p>
+                      <p className="text-lg font-semibold">{stats?.day?.total || 0}</p>
+                    </div>
+                    <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                      <p className="text-xs text-gray-500">Week</p>
+                      <p className="text-lg font-semibold">{stats?.week?.total || 0}</p>
+                    </div>
+                    <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                      <p className="text-xs text-gray-500">Month</p>
+                      <p className="text-lg font-semibold">{stats?.month?.total || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {["day", "week", "month"].map((period) => (
+                      <div key={period} className="p-2 rounded bg-white border border-gray-200">
+                        <p className="text-xs font-medium text-gray-700 capitalize mb-1">
+                          {period} by platform
+                        </p>
+                        {Object.keys(stats?.[period]?.byPlatform || {}).length === 0 ? (
+                          <p className="text-xs text-gray-500">No data</p>
+                        ) : (
+                          <div className="text-xs text-gray-700 space-y-1">
+                            {Object.entries(stats?.[period]?.byPlatform || {})
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([platform, count]) => (
+                                <p key={`${period}-${platform}`}>
+                                  <span className="capitalize">{platform}</span>: {count}
+                                </p>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </form>
             )}
@@ -399,6 +609,49 @@ export default function App() {
                     </small>
                   </div>
 
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700">
+                        Use DeepSeek for extraction
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={useAiExtractor}
+                        onChange={(e) => setUseAiExtractor(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        DeepSeek API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={deepseekApiKey}
+                        onChange={(e) => setDeepseekApiKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        DeepSeek Model
+                      </label>
+                      <input
+                        type="text"
+                        value={deepseekModel}
+                        onChange={(e) => setDeepseekModel(e.target.value)}
+                        placeholder="deepseek-chat"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                      />
+                      <small className="text-xs text-gray-500">
+                        Recommended: deepseek-chat
+                      </small>
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium"
@@ -411,7 +664,7 @@ export default function App() {
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="text-sm font-semibold text-blue-900 mb-2">Setup Guide</h3>
                   <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                    <li>Create a Google Sheet with headers: Date & Time, URL, Job Title, Company, More</li>
+                    <li>Create a Google Sheet with headers: Date & Time, URL, Job Title, Company, Location, Work Type, Job Type, Salary, Security Clearance</li>
                     <li>Create a service account in Google Cloud Console</li>
                     <li>Download the service account JSON file</li>
                     <li>Share your Google Sheet with the service account email</li>

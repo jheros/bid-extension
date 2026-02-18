@@ -1,4 +1,5 @@
 // Background service worker with Service Account authentication
+const APPLICATION_STATS_HISTORY_KEY = 'applicationStatsHistory';
 
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -47,7 +48,104 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     return true; // Keep channel open for async response
   }
+
+  if (request.type === 'EXTRACT_JOB_INFO_AI') {
+    extractJobInfoWithAI(request.data)
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+
+    return true; // Keep channel open for async response
+  }
+
+  if (request.type === 'GET_APPLICATION_STATS') {
+    getApplicationStats()
+      .then(result => sendResponse({ success: true, result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+
+    return true; // Keep channel open for async response
+  }
 });
+
+async function extractJobInfoWithAI(data) {
+  const settings = await chrome.storage.local.get([
+    'deepseekApiKey',
+    'deepseekModel',
+    'useAiExtractor'
+  ]);
+
+  const deepseekApiKey = settings.deepseekApiKey || '';
+  const deepseekModel = settings.deepseekModel || 'deepseek-chat';
+  const useAiExtractor = Boolean(settings.useAiExtractor);
+
+  if (!useAiExtractor) {
+    throw new Error('AI extractor is disabled in settings.');
+  }
+
+  if (!deepseekApiKey) {
+    throw new Error('DeepSeek API key is not configured.');
+  }
+
+  const model = deepseekModel || 'deepseek/deepseek-r1-0528:free';
+  const pageText = (data?.pageText || '');
+  // const fallback = data?.fallback || {};
+
+  const systemPrompt = [
+    'You extract job posting information.',
+    'Return only valid JSON with keys:',
+    'jobTitle, company, location, workType, jobType, salary, securityClearance',
+    'Rules:',
+    '- workType should be one of: Remote, Hybrid, Onsite, or empty string. If both, return both.',
+    '- jobType should be one of: Full-time, Part-time, Contract, Internship, Temporary, or empty string.',
+    '- salary should be a short salary/range string if present, else empty string.',
+    '- securityClearance should be a short clearance requirement string if present, else empty string.',
+    '- If unknown, use empty string values.',
+    '- Do not wrap JSON in markdown.'
+  ].join(' ');
+
+  const userPrompt = JSON.stringify({
+    // url: data?.url || '',
+    // pageTitle: data?.pageTitle || '',
+    // fallback,
+    jobDescription: pageText
+  });
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${deepseekApiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: 'json_object' }
+    })
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || 'Failed to extract job info with DeepSeek.');
+  }
+
+  const completion = await response.json();
+  const result = completion?.choices?.[0]?.message?.content || '{}';
+  const parsed = JSON.parse(result);
+
+  const normalized = {
+    jobTitle: (parsed.jobTitle || '').toString().trim(),
+    company: (parsed.company || '').toString().trim(),
+    location: (parsed.location || '').toString().trim(),
+    workType: (parsed.workType || '').toString().trim(),
+    jobType: (parsed.jobType || '').toString().trim(),
+    salary: (parsed.salary || '').toString().trim(),
+    securityClearance: (parsed.securityClearance || '').toString().trim()
+  };
+
+  return normalized;
+}
 
 // Generate JWT token for service account
 async function generateJWT(serviceAccount) {
@@ -169,7 +267,7 @@ async function getAccessToken() {
 
 // Fetch existing rows from Google Sheet
 async function getSheetValues(accessToken, sheetId, sheetName) {
-  const range = `${encodeURIComponent(sheetName)}!A:E`;
+  const range = `${encodeURIComponent(sheetName)}!A:I`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
 
   const response = await fetch(url, {
@@ -189,6 +287,131 @@ async function getSheetValues(accessToken, sheetId, sheetName) {
 
   const result = await response.json();
   return result.values || [];
+}
+
+function parseBangkokDateTimeToUtcMs(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const match = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4] || '0');
+  const minute = Number(match[5] || '0');
+  const second = Number(match[6] || '0');
+
+  // Stored timestamps are Bangkok local time (UTC+7).
+  return Date.UTC(year, month - 1, day, hour - 7, minute, second);
+}
+
+function detectPlatformFromUrl(url) {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    if (hostname.includes('greenhouse.io') || hostname.includes('greenhouse.com')) return 'greenhouse';
+    if (hostname.includes('ashbyhq.com')) return 'ashbyhq';
+    if (hostname.includes('lever.co')) return 'lever';
+    if (hostname.includes('myworkdayjobs.com') || hostname.includes('workday.com')) return 'workday';
+    if (hostname.includes('linkedin.com')) return 'linkedin';
+    if (hostname.includes('indeed.com')) return 'indeed';
+    if (hostname.includes('smartrecruiters.com')) return 'smartrecruiters';
+    if (hostname.includes('jobvite.com')) return 'jobvite';
+    if (hostname.includes('icims.com')) return 'icims';
+    if (hostname.includes('workable.com')) return 'workable';
+    return 'other';
+  } catch {
+    return 'other';
+  }
+}
+
+function getBangkokPeriodStartsUtc(nowUtcMs) {
+  const dayBoundaryUtcHour = 1; // 08:00 Bangkok time
+  const shiftedNow = new Date(nowUtcMs - dayBoundaryUtcHour * 60 * 60 * 1000);
+  const y = shiftedNow.getUTCFullYear();
+  const m = shiftedNow.getUTCMonth();
+  const d = shiftedNow.getUTCDate();
+  const dow = shiftedNow.getUTCDay(); // 0=Sun,1=Mon,...
+
+  const dayStartUtc = Date.UTC(y, m, d, dayBoundaryUtcHour, 0, 0);
+  const mondayOffset = (dow + 6) % 7;
+  const weekStartUtc = dayStartUtc - mondayOffset * 24 * 60 * 60 * 1000;
+  const monthStartUtc = Date.UTC(y, m, 1, dayBoundaryUtcHour, 0, 0);
+
+  return {
+    dayStartUtc,
+    weekStartUtc,
+    monthStartUtc,
+    nowUtcMs
+  };
+}
+
+function createEmptyStatsBucket() {
+  return {
+    total: 0,
+    byPlatform: {}
+  };
+}
+
+function addToBucket(bucket, platform) {
+  bucket.total += 1;
+  bucket.byPlatform[platform] = (bucket.byPlatform[platform] || 0) + 1;
+}
+
+function computeStatsFromHistory(history) {
+  const nowUtcMs = Date.now();
+  const boundaries = getBangkokPeriodStartsUtc(nowUtcMs);
+  const day = createEmptyStatsBucket();
+  const week = createEmptyStatsBucket();
+  const month = createEmptyStatsBucket();
+
+  for (const entry of history) {
+    const timestampUtc = Number(entry?.timestampUtc);
+    if (!timestampUtc || timestampUtc > nowUtcMs) continue;
+
+    const platform = entry?.platform || 'other';
+
+    if (timestampUtc >= boundaries.monthStartUtc) addToBucket(month, platform);
+    if (timestampUtc >= boundaries.weekStartUtc) addToBucket(week, platform);
+    if (timestampUtc >= boundaries.dayStartUtc) addToBucket(day, platform);
+  }
+
+  return {
+    day,
+    week,
+    month,
+    boundaries
+  };
+}
+
+async function trackSavedApplication(data) {
+  const parsedTs = parseBangkokDateTimeToUtcMs(data?.datetime || data?.date);
+  const timestampUtc = parsedTs || Date.now();
+  const platform = detectPlatformFromUrl(data?.url || '');
+
+  const result = await chrome.storage.local.get([APPLICATION_STATS_HISTORY_KEY]);
+  const history = Array.isArray(result[APPLICATION_STATS_HISTORY_KEY])
+    ? result[APPLICATION_STATS_HISTORY_KEY]
+    : [];
+
+  history.push({
+    id: `${timestampUtc}-${Math.random().toString(36).slice(2, 10)}`,
+    timestampUtc,
+    platform
+  });
+
+  await chrome.storage.local.set({ [APPLICATION_STATS_HISTORY_KEY]: history });
+}
+
+async function getApplicationStats() {
+  const result = await chrome.storage.local.get([APPLICATION_STATS_HISTORY_KEY]);
+  const history = Array.isArray(result[APPLICATION_STATS_HISTORY_KEY])
+    ? result[APPLICATION_STATS_HISTORY_KEY]
+    : [];
+
+  return computeStatsFromHistory(history);
 }
 
 // Check if same job already exists (same url, company, job title)
@@ -258,11 +481,15 @@ async function saveToGoogleSheets(data) {
       data.url,
       data.jobTitle,
       data.company,
-      data.more || ""
+      data.location || "",
+      data.workType || "",
+      data.jobType || "",
+      data.salary || "",
+      data.securityClearance || ""
     ]];
 
     // Google Sheets API endpoint - use configured sheet name
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A:E:append?valueInputOption=USER_ENTERED`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}!A:I:append?valueInputOption=USER_ENTERED`;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -289,6 +516,10 @@ async function saveToGoogleSheets(data) {
 
     const result = await response.json();
     console.log('Successfully saved to Google Sheets:', result);
+
+    // Persist a local event log for fast stats without re-reading Sheets.
+    await trackSavedApplication(data);
+
     return result;
 
   } catch (error) {
