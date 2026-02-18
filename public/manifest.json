@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Job Application Tracker",
   "version": "1.0.0",
-  "description": "Track job applications with keyboard shortcuts and save to Google Sheets",
+  "description": "Track job applications with keyboard shortcuts and save to your dashboard",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -18,8 +18,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://sheets.googleapis.com/*",
-    "https://oauth2.googleapis.com/*",
-    "https://api.deepseek.com/*"
+    "http://localhost:3000/*",
+    "https://openrouter.ai/*"
   ]
 }
