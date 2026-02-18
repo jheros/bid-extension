@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Job Application Tracker",
+  "version": "1.0.0",
+  "description": "Track job applications with keyboard shortcuts and save to your dashboard",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.jsx"]
+    }
+  ],
+  "background": {
+    "service_worker": "src/background/index.js"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://openrouter.ai/*"
+  ]
+}

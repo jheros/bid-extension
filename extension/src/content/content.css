@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer base {
+  :host {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+    /*
+      Tailwind transform utilities rely on --tw-* CSS variables.
+      Custom properties can inherit across the shadow boundary from the host page,
+      so we reset these defaults at the extension host to avoid site collisions.
+    */
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-rotate-x: rotateX(0);
+    --tw-rotate-y: rotateY(0);
+    --tw-rotate-z: rotateZ(0);
+    --tw-skew-x: skewX(0);
+    --tw-skew-y: skewY(0);
+    --tw-scale-x: 1;
+    --tw-scale-y: 1;
+    --tw-scale-z: 1;
+    /*
+      Tailwind border utilities in v4 use --tw-border-style.
+      If a host page defines this custom property, it can leak into shadow descendants.
+      Force a stable default so border/border-* classes render consistently.
+    */
+    --tw-border-style: solid !important;
+    --tw-border-color: rgb(209 213 219) !important;
+    --tw-ring-color: rgb(107 114 128 / 0.35) !important;
+  }
+
+  :host input:focus,
+  :host textarea:focus,
+  :host select:focus {
+    border-color: rgb(107 114 128) !important;
+    --tw-border-style: solid !important;
+  }
+}
+
+.writing-mode-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
