@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { LogOut, Trash2, ExternalLink, Search, RefreshCw, Briefcase } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { LogOut, Trash2, ExternalLink, Search, RefreshCw, Briefcase, ShieldCheck } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
 
@@ -29,6 +29,7 @@ function PlatformBadge({ platform }) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [applications, setApplications] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -43,7 +44,17 @@ export default function Dashboard() {
   const [filterWorkType, setFilterWorkType] = useState('')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.auth.getUser().then(async ({ data }) => {
+      setUser(data.user)
+      if (data.user) {
+        const { data: p } = await supabase
+          .from('profiles')
+          .select('name, role')
+          .eq('id', data.user.id)
+          .single()
+        setProfile(p)
+      }
+    })
   }, [])
 
   const fetchStats = useCallback(async () => {
@@ -118,16 +129,29 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="font-semibold text-white leading-none">Job Tracker</h1>
-              <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {profile?.name ? `${profile.name} · ${user?.email}` : user?.email}
+              </p>
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800"
-          >
-            <LogOut size={15} />
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            {profile?.role === 'admin' && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800"
+              >
+                <ShieldCheck size={15} />
+                Admin
+              </Link>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800"
+            >
+              <LogOut size={15} />
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -136,7 +160,7 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-              Applications (Bangkok 08:00 cutoff)
+              Applications (08:00 GMT+7 cutoff)
             </h2>
             <button
               onClick={() => { fetchStats(); fetchApplications() }}

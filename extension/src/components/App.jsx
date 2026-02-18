@@ -26,7 +26,7 @@ export default function App() {
   const [backendUrl, setBackendUrl] = useState("http://localhost:3000");
   const [useAiExtractor, setUseAiExtractor] = useState(false);
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
-  const [deepseekModel, setDeepseekModel] = useState("deepseek-chat");
+  const [deepseekModel, setDeepseekModel] = useState("openrouter/aurora-alpha");
 
   // Auth state
   const [authEmail, setAuthEmail] = useState("");
@@ -510,7 +510,7 @@ export default function App() {
 
                   <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">Use DeepSeek for extraction</label>
+                      <label className="text-sm font-medium text-gray-700">Use OpenRouter for extraction</label>
                       <input
                         type="checkbox"
                         checked={useAiExtractor}
@@ -519,7 +519,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">DeepSeek API Key</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                       <input
                         type="password"
                         value={deepseekApiKey}
@@ -529,15 +529,15 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">DeepSeek Model</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Free Model</label>
                       <input
                         type="text"
                         value={deepseekModel}
                         onChange={(e) => setDeepseekModel(e.target.value)}
-                        placeholder="deepseek-chat"
+                        placeholder="openrouter/aurora-alpha"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                       />
-                      <small className="text-xs text-gray-500">Recommended: deepseek-chat</small>
+                      <small className="text-xs text-gray-500">Recommended: openrouter/aurora-alpha</small>
                     </div>
                   </div>
 

@@ -25,16 +25,27 @@ async function request(path, options = {}) {
   return body
 }
 
+const buildQs = (params) =>
+  new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v))
+  ).toString()
+
 export const api = {
   getApplications: (params = {}) => {
-    const qs = new URLSearchParams(
-      Object.fromEntries(Object.entries(params).filter(([, v]) => v))
-    ).toString()
+    const qs = buildQs(params)
     return request(`/api/applications${qs ? `?${qs}` : ''}`)
   },
   getStats: () => request('/api/applications/stats'),
   createApplication: (data) =>
     request('/api/applications', { method: 'POST', body: JSON.stringify(data) }),
   deleteApplication: (id) =>
-    request(`/api/applications/${id}`, { method: 'DELETE' })
+    request(`/api/applications/${id}`, { method: 'DELETE' }),
+
+  admin: {
+    getApplications: (params = {}) => {
+      const qs = buildQs(params)
+      return request(`/api/admin/applications${qs ? `?${qs}` : ''}`)
+    },
+    getUsers: () => request('/api/admin/users'),
+  },
 }

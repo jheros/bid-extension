@@ -16,3 +16,17 @@ export async function requireAuth(req, res, next) {
   req.user = data.user;
   next();
 }
+
+export async function requireAdmin(req, res, next) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', req.user.id)
+    .single();
+
+  if (error || profile?.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: admin access required' });
+  }
+
+  next();
+}

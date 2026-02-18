@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Briefcase, Loader2 } from 'lucide-react'
-import supabase from '../lib/supabase.js'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 export default function SignUp() {
   const navigate = useNavigate()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -28,8 +30,13 @@ export default function SignUp() {
 
     setLoading(true)
     try {
-      const { error: authError } = await supabase.auth.signUp({ email, password })
-      if (authError) throw authError
+      const res = await fetch(`${API_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name }),
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error || 'Signup failed')
       setSuccess('Account created! Check your email to confirm, then sign in.')
       setTimeout(() => navigate('/signin'), 3000)
     } catch (err) {
@@ -63,6 +70,20 @@ export default function SignUp() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Smith"
+                required
+                className="w-full px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">
                 Email

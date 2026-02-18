@@ -4,16 +4,24 @@ import supabase from '../lib/supabase.js';
 const router = Router();
 
 router.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, name } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: 'Email, password, and name are required' });
   }
 
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
     return res.status(400).json({ error: error.message });
+  }
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert({ id: data.user.id, name });
+
+  if (profileError) {
+    return res.status(500).json({ error: profileError.message });
   }
 
   res.status(201).json({
