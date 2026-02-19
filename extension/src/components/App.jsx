@@ -8,8 +8,6 @@ export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("track");
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
-  const [stats, setStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(false);
 
   // Track form state
   const [jobTitle, setJobTitle] = useState("");
@@ -64,26 +62,6 @@ export default function App() {
     setTimeout(() => setAuthStatus({ text: "", type: "" }), 5000);
   };
 
-  const fetchStats = useCallback(
-    async ({ silent = false } = {}) => {
-      setStatsLoading(true);
-      try {
-        const response = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({ type: "GET_APPLICATION_STATS" }, resolve);
-        });
-        if (response?.success) {
-          setStats(response.result);
-        } else if (!silent) {
-          showStatus(`Stats error: ${response?.error || "Unknown error"}`, "error");
-        }
-      } catch (error) {
-        if (!silent) showStatus(`Stats error: ${error.message}`, "error");
-      } finally {
-        setStatsLoading(false);
-      }
-    },
-    [showStatus],
-  );
 
   const getPageTextForAI = () =>
     (document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 24000);
@@ -161,8 +139,7 @@ export default function App() {
   useEffect(() => {
     setDatetime(getBangkokDateTimeLocal());
     loadSettings();
-    void fetchStats({ silent: true });
-  }, [fetchStats]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -198,7 +175,6 @@ export default function App() {
         setSecurityClearance("");
         setUrl("");
         setDatetime(getBangkokDateTimeLocal());
-        void fetchStats({ silent: true });
       } else {
         showStatus(`Error: ${response?.error || "Unknown error"}`, "error");
       }
@@ -379,52 +355,7 @@ export default function App() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   />
                 </div>
-
-                {/* Stats */}
-                <div className="pt-2 border-t border-gray-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      Stats (Bangkok 08:00 cutoff)
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => void fetchStats()}
-                      className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
-                    >
-                      {statsLoading ? "Loading..." : "Refresh"}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    {["day", "week", "month"].map((p) => (
-                      <div key={p} className="p-2 rounded bg-gray-50 border border-gray-200">
-                        <p className="text-xs text-gray-500 capitalize">{p}</p>
-                        <p className="text-lg font-semibold">{stats?.[p]?.total || 0}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-2">
-                    {["day", "week", "month"].map((period) => (
-                      <div key={period} className="p-2 rounded bg-white border border-gray-200">
-                        <p className="text-xs font-medium text-gray-700 capitalize mb-1">
-                          {period} by platform
-                        </p>
-                        {Object.keys(stats?.[period]?.byPlatform || {}).length === 0 ? (
-                          <p className="text-xs text-gray-500">No data</p>
-                        ) : (
-                          <div className="text-xs text-gray-700 space-y-1">
-                            {Object.entries(stats?.[period]?.byPlatform || {})
-                              .sort((a, b) => b[1] - a[1])
-                              .map(([platform, count]) => (
-                                <p key={`${period}-${platform}`}>
-                                  <span className="capitalize">{platform}</span>: {count}
-                                </p>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                
               </form>
             )}
 

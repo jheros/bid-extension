@@ -1,4 +1,4 @@
-const APPLICATION_STATS_HISTORY_KEY = 'applicationStatsHistory';
+
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'SHOW_NOTIFICATION') {
@@ -75,12 +75,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.type === 'GET_APPLICATION_STATS') {
-    getApplicationStats()
-      .then(result => sendResponse({ success: true, result }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
 });
 
 async function signInToBackend(email, password) {
@@ -145,7 +139,6 @@ async function saveToBackend(data) {
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Failed to save application');
 
-  await trackSavedApplication({ ...data, platform });
   return result;
 }
 
@@ -239,22 +232,6 @@ function detectPlatformFromUrl(url) {
   }
 }
 
-function getBangkokPeriodStartsUtc(nowUtcMs) {
-  const dayBoundaryUtcHour = 1; // 08:00 Bangkok = 01:00 UTC
-  const shiftedNow = new Date(nowUtcMs - dayBoundaryUtcHour * 60 * 60 * 1000);
-  const y = shiftedNow.getUTCFullYear();
-  const m = shiftedNow.getUTCMonth();
-  const d = shiftedNow.getUTCDate();
-  const dow = shiftedNow.getUTCDay();
-
-  const dayStartUtc = Date.UTC(y, m, d, dayBoundaryUtcHour, 0, 0);
-  const mondayOffset = (dow + 6) % 7;
-  const weekStartUtc = dayStartUtc - mondayOffset * 24 * 60 * 60 * 1000;
-  const monthStartUtc = Date.UTC(y, m, 1, dayBoundaryUtcHour, 0, 0);
-
-  return { dayStartUtc, weekStartUtc, monthStartUtc, nowUtcMs };
-}
-
 function parseBangkokDateTimeToUtcMs(value) {
   if (!value) return null;
   const raw = String(value).trim();
@@ -262,61 +239,6 @@ function parseBangkokDateTimeToUtcMs(value) {
   if (!match) return null;
   const [, y, mo, d, h = '0', mi = '0', s = '0'] = match;
   return Date.UTC(+y, +mo - 1, +d, +h - 7, +mi, +s);
-}
-
-function createEmptyStatsBucket() {
-  return { total: 0, byPlatform: {} };
-}
-
-function addToBucket(bucket, platform) {
-  bucket.total += 1;
-  bucket.byPlatform[platform] = (bucket.byPlatform[platform] || 0) + 1;
-}
-
-function computeStatsFromHistory(history) {
-  const nowUtcMs = Date.now();
-  const boundaries = getBangkokPeriodStartsUtc(nowUtcMs);
-  const day = createEmptyStatsBucket();
-  const week = createEmptyStatsBucket();
-  const month = createEmptyStatsBucket();
-
-  for (const entry of history) {
-    const timestampUtc = Number(entry?.timestampUtc);
-    if (!timestampUtc || timestampUtc > nowUtcMs) continue;
-    const platform = entry?.platform || 'other';
-    if (timestampUtc >= boundaries.monthStartUtc) addToBucket(month, platform);
-    if (timestampUtc >= boundaries.weekStartUtc) addToBucket(week, platform);
-    if (timestampUtc >= boundaries.dayStartUtc) addToBucket(day, platform);
-  }
-
-  return { day, week, month, boundaries };
-}
-
-async function trackSavedApplication(data) {
-  const parsedTs = parseBangkokDateTimeToUtcMs(data?.datetime);
-  const timestampUtc = parsedTs || Date.now();
-  const platform = data?.platform || detectPlatformFromUrl(data?.url || '');
-
-  const result = await chrome.storage.local.get([APPLICATION_STATS_HISTORY_KEY]);
-  const history = Array.isArray(result[APPLICATION_STATS_HISTORY_KEY])
-    ? result[APPLICATION_STATS_HISTORY_KEY]
-    : [];
-
-  history.push({
-    id: `${timestampUtc}-${Math.random().toString(36).slice(2, 10)}`,
-    timestampUtc,
-    platform
-  });
-
-  await chrome.storage.local.set({ [APPLICATION_STATS_HISTORY_KEY]: history });
-}
-
-async function getApplicationStats() {
-  const result = await chrome.storage.local.get([APPLICATION_STATS_HISTORY_KEY]);
-  const history = Array.isArray(result[APPLICATION_STATS_HISTORY_KEY])
-    ? result[APPLICATION_STATS_HISTORY_KEY]
-    : [];
-  return computeStatsFromHistory(history);
 }
 
 function getBangkokDateTime() {
