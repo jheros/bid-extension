@@ -41,6 +41,19 @@ export const api = {
   deleteApplication: (id) =>
     request(`/api/applications/${id}`, { method: 'DELETE' }),
 
+  team: {
+    getRequests: () => request('/api/team/requests'),
+    getTeammates: () => request('/api/team/teammates'),
+    getApplications: (params = {}) => {
+      const qs = buildQs(params)
+      return request(`/api/team/applications${qs ? `?${qs}` : ''}`)
+    },
+    sendRequest: (email) =>
+      request('/api/team/requests', { method: 'POST', body: JSON.stringify({ email }) }),
+    respondRequest: (id, action) =>
+      request(`/api/team/requests/${id}`, { method: 'PATCH', body: JSON.stringify({ action }) }),
+  },
+
   admin: {
     getApplications: (params = {}) => {
       const qs = buildQs(params)

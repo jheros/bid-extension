@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         chrome.notifications.create({
           type: 'basic',
           iconUrl: chrome.runtime.getURL('icons/icon48.png'),
-          title: 'Job Application Saved!',
+          title: `Job Application Saved!`,
           message: `${request.data.jobTitle || 'Application'} at ${request.data.company || 'Company'} saved successfully.`,
           priority: 2
         });
@@ -112,6 +112,14 @@ async function saveToBackend(data) {
 
   const platform = detectPlatformFromUrl(data.url || '');
 
+  // data.datetime is Bangkok (GMT+7); parse as Bangkok and convert to UTC ISO for backend
+  const bangkokDatetime = data.datetime || getBangkokDateTime();
+  const appliedAtUtcMs = parseBangkokDateTimeToUtcMs(bangkokDatetime);
+  const applied_at =
+    appliedAtUtcMs != null
+      ? new Date(appliedAtUtcMs).toISOString()
+      : new Date().toISOString();
+
   const response = await fetch(`${settings.backendUrl}/api/applications`, {
     method: 'POST',
     headers: {
@@ -128,7 +136,7 @@ async function saveToBackend(data) {
       security_clearance: data.securityClearance || null,
       url: data.url,
       platform,
-      applied_at: data.datetime ? new Date(data.datetime).toISOString() : new Date().toISOString()
+      applied_at
     })
   });
 

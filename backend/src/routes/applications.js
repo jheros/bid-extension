@@ -27,7 +27,6 @@ router.get('/', async (req, res) => {
   if (to) query = query.lte('applied_at', to);
 
   const { data, error } = await query;
-
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -99,7 +98,6 @@ router.post('/', async (req, res) => {
   if (existing?.length > 0) {
     return res.status(409).json({ error: 'DUPLICATE_APPLICATION' });
   }
-
   const { data, error } = await supabase
     .from('job_applications')
     .insert({

@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRouter from './routes/auth.js';
 import applicationsRouter from './routes/applications.js';
 import adminRouter from './routes/admin.js';
+import teamRouter from './routes/team.js';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/team', teamRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

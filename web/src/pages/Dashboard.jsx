@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { LogOut, Trash2, ExternalLink, Search, RefreshCw, Briefcase, ShieldCheck } from 'lucide-react'
+import { LogOut, Trash2, ExternalLink, Search, RefreshCw, Briefcase, ShieldCheck, Users2 } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
 
@@ -37,7 +37,6 @@ export default function Dashboard() {
   const [deletingId, setDeletingId] = useState(null)
   const [error, setError] = useState('')
 
-  // Filters
   const [search, setSearch] = useState('')
   const [filterPlatform, setFilterPlatform] = useState('')
   const [filterJobType, setFilterJobType] = useState('')
@@ -120,7 +119,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -135,6 +133,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              to="/team"
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800"
+            >
+              <Users2 size={15} />
+              Team
+            </Link>
             {profile?.role === 'admin' && (
               <Link
                 to="/admin"
@@ -156,7 +161,6 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* Stats */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
@@ -190,7 +194,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -236,7 +239,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Table */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-gray-400">
