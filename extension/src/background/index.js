@@ -62,7 +62,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'BACKEND_SIGNOUT') {
-    chrome.storage.local.remove(['authToken', 'authEmail'], () =>
+    chrome.storage.local.remove(['authToken', 'authRefreshToken', 'authEmail'], () =>
       sendResponse({ success: true })
     );
     return true;
@@ -92,14 +92,38 @@ async function signInToBackend(email, password) {
 
   await chrome.storage.local.set({
     authToken: data.access_token,
+    authRefreshToken: data.refresh_token,
     authEmail: data.user.email
   });
 
   return { email: data.user.email };
 }
 
+async function refreshBackendSession(backendUrl, refreshToken) {
+  if (!refreshToken) throw new Error('Session expired. Please sign in again.');
+
+  const response = await fetch(`${backendUrl}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    await chrome.storage.local.remove(['authToken', 'authRefreshToken', 'authEmail']);
+    throw new Error(data.error || 'Session expired. Please sign in again.');
+  }
+
+  await chrome.storage.local.set({
+    authToken: data.access_token,
+    authRefreshToken: data.refresh_token
+  });
+
+  return data.access_token;
+}
+
 async function saveToBackend(data) {
-  const settings = await chrome.storage.local.get(['backendUrl', 'authToken']);
+  const settings = await chrome.storage.local.get(['backendUrl', 'authToken', 'authRefreshToken']);
 
   if (!settings.backendUrl) throw new Error('Backend URL is not configured in settings.');
   if (!settings.authToken) throw new Error('Not signed in. Please sign in via the Settings tab.');
@@ -114,7 +138,7 @@ async function saveToBackend(data) {
       ? new Date(appliedAtUtcMs).toISOString()
       : new Date().toISOString();
 
-  const response = await fetch(`${settings.backendUrl}/api/applications`, {
+  let response = await fetch(`${settings.backendUrl}/api/applications`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -133,6 +157,29 @@ async function saveToBackend(data) {
       applied_at
     })
   });
+
+  if (response.status === 401) {
+    const nextToken = await refreshBackendSession(settings.backendUrl, settings.authRefreshToken);
+    response = await fetch(`${settings.backendUrl}/api/applications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${nextToken}`
+      },
+      body: JSON.stringify({
+        job_title: data.jobTitle,
+        company: data.company,
+        location: data.location || null,
+        work_type: data.workType || null,
+        job_type: data.jobType || null,
+        salary: data.salary || null,
+        security_clearance: data.securityClearance || null,
+        url: data.url,
+        platform,
+        applied_at
+      })
+    });
+  }
 
   if (response.status === 409) throw new Error('DUPLICATE_APPLICATION');
 

@@ -21,7 +21,7 @@ export default function App() {
   const [datetime, setDatetime] = useState("");
 
   // Settings state
-  const [backendUrl, setBackendUrl] = useState("http://localhost:3000");
+  const [backendUrl, setBackendUrl] = useState("http://localhost:4000");
   const [useAiExtractor, setUseAiExtractor] = useState(false);
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [deepseekModel, setDeepseekModel] = useState("openrouter/aurora-alpha");
