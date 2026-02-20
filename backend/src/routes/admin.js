@@ -9,11 +9,16 @@ router.use(requireAdmin);
 
 router.get('/applications', async (req, res) => {
   const { search, platform, job_type, work_type, from, to, user_id } = req.query;
+  const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const pageSize = Math.min(Math.max(Number.parseInt(req.query.page_size, 10) || 10, 1), 100);
+  const fromIdx = (page - 1) * pageSize;
+  const toIdx = fromIdx + pageSize - 1;
 
   let query = supabase
     .from('job_applications')
-    .select('*')
-    .order('applied_at', { ascending: false });
+    .select('*', { count: 'exact' })
+    .order('applied_at', { ascending: false })
+    .range(fromIdx, toIdx);
 
   if (user_id) query = query.eq('user_id', user_id);
   if (platform) query = query.eq('platform', platform);
@@ -27,7 +32,7 @@ router.get('/applications', async (req, res) => {
     );
   }
 
-  const { data: applications, error } = await query;
+  const { data: applications, error, count } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
   // Attach profile names
@@ -39,7 +44,17 @@ router.get('/applications', async (req, res) => {
 
   const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p.name]));
 
-  res.json(applications.map((a) => ({ ...a, user_name: profileMap[a.user_id] || null })));
+  const items = applications.map((a) => ({ ...a, user_name: profileMap[a.user_id] || null }));
+  const total = count || 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  res.json({
+    items,
+    total,
+    page,
+    page_size: pageSize,
+    total_pages: totalPages
+  });
 });
 
 router.get('/users', async (req, res) => {

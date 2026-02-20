@@ -259,6 +259,10 @@ router.get('/teammates', async (req, res) => {
 router.get('/applications', async (req, res) => {
   const meId = req.user.id;
   const { user_id, search, platform, job_type, work_type, from, to } = req.query;
+  const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const pageSize = Math.min(Math.max(Number.parseInt(req.query.page_size, 10) || 10, 1), 100);
+  const fromIdx = (page - 1) * pageSize;
+  const toIdx = fromIdx + pageSize - 1;
 
   if (!user_id) {
     return res.status(400).json({ error: 'user_id is required' });
@@ -274,9 +278,10 @@ router.get('/applications', async (req, res) => {
 
     let query = supabase
       .from('job_applications')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('user_id', user_id)
-      .order('applied_at', { ascending: false });
+      .order('applied_at', { ascending: false })
+      .range(fromIdx, toIdx);
 
     if (search) {
       query = query.or(
@@ -289,7 +294,7 @@ router.get('/applications', async (req, res) => {
     if (from) query = query.gte('applied_at', from);
     if (to) query = query.lte('applied_at', to);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
 
     const { data: profile } = await supabase
@@ -298,11 +303,21 @@ router.get('/applications', async (req, res) => {
       .eq('id', user_id)
       .single();
 
-    res.json((data || []).map((row) => ({
+    const items = (data || []).map((row) => ({
       ...row,
       owner_name: profile?.name || null,
       is_own: row.user_id === meId
-    })));
+    }));
+    const total = count || 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    res.json({
+      items,
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

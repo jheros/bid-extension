@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [applications, setApplications] = useState([])
+  const [totalItems, setTotalItems] = useState(0)
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [statsLoading, setStatsLoading] = useState(true)
@@ -41,6 +42,8 @@ export default function Dashboard() {
   const [filterPlatform, setFilterPlatform] = useState('')
   const [filterJobType, setFilterJobType] = useState('')
   const [filterWorkType, setFilterWorkType] = useState('')
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -76,15 +79,19 @@ export default function Dashboard() {
         search: search || undefined,
         platform: filterPlatform || undefined,
         job_type: filterJobType || undefined,
-        work_type: filterWorkType || undefined
+        work_type: filterWorkType || undefined,
+        page: currentPage,
+        page_size: pageSize
       })
-      setApplications(data)
+      setApplications(data.items || [])
+      setTotalItems(data.total || 0)
+      setCurrentPage((prev) => (data.total_pages && prev > data.total_pages ? data.total_pages : prev))
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [search, filterPlatform, filterJobType, filterWorkType])
+  }, [search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
 
   useEffect(() => {
     fetchApplications()
@@ -96,7 +103,7 @@ export default function Dashboard() {
     setDeletingId(id)
     try {
       await api.deleteApplication(id)
-      setApplications((prev) => prev.filter((a) => a.id !== id))
+      await fetchApplications()
       fetchStats()
     } catch (err) {
       setError(err.message)
@@ -116,6 +123,11 @@ export default function Dashboard() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPageSafe = Math.min(currentPage, totalPages)
+  const startIdx = totalItems === 0 ? 0 : ((currentPageSafe - 1) * pageSize) + 1
+  const endIdx = Math.min(currentPageSafe * pageSize, totalItems)
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -201,14 +213,14 @@ export default function Dashboard() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                 placeholder="Search by title, company, location..."
                 className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
               />
             </div>
             <select
               value={filterPlatform}
-              onChange={(e) => setFilterPlatform(e.target.value)}
+              onChange={(e) => { setFilterPlatform(e.target.value); setCurrentPage(1) }}
               className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
             >
               <option value="">All platforms</option>
@@ -218,7 +230,7 @@ export default function Dashboard() {
             </select>
             <select
               value={filterJobType}
-              onChange={(e) => setFilterJobType(e.target.value)}
+              onChange={(e) => { setFilterJobType(e.target.value); setCurrentPage(1) }}
               className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
             >
               <option value="">All job types</option>
@@ -228,7 +240,7 @@ export default function Dashboard() {
             </select>
             <select
               value={filterWorkType}
-              onChange={(e) => setFilterWorkType(e.target.value)}
+              onChange={(e) => { setFilterWorkType(e.target.value); setCurrentPage(1) }}
               className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
             >
               <option value="">All work types</option>
@@ -242,8 +254,24 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-gray-400">
-              {loading ? 'Loading...' : `${applications.length} application${applications.length !== 1 ? 's' : ''}`}
+              {loading
+                ? 'Loading...'
+                : `${totalItems} application${totalItems !== 1 ? 's' : ''}`}
             </p>
+            {!loading && totalItems > 0 && (
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <span>Per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
+                  className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -256,7 +284,7 @@ export default function Dashboard() {
             <div className="flex justify-center py-16">
               <div className="w-6 h-6 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
             </div>
-          ) : applications.length === 0 ? (
+          ) : totalItems === 0 ? (
             <div className="text-center py-16 bg-gray-900 border border-gray-800 rounded-xl">
               <Briefcase size={32} className="text-gray-700 mx-auto mb-3" />
               <p className="text-gray-500 text-sm">No applications found</p>
@@ -334,6 +362,28 @@ export default function Dashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800 text-xs text-gray-400">
+                <p>
+                  Showing {startIdx}-{endIdx} of {totalItems}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPageSafe === 1}
+                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <span>Page {currentPageSafe} / {totalPages}</span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPageSafe === totalPages}
+                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           )}

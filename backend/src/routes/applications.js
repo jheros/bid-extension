@@ -8,12 +8,17 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   const { search, platform, job_type, work_type, from, to } = req.query;
+  const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const pageSize = Math.min(Math.max(Number.parseInt(req.query.page_size, 10) || 10, 1), 100);
+  const fromIdx = (page - 1) * pageSize;
+  const toIdx = fromIdx + pageSize - 1;
 
   let query = supabase
     .from('job_applications')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('user_id', req.user.id)
-    .order('applied_at', { ascending: false });
+    .order('applied_at', { ascending: false })
+    .range(fromIdx, toIdx);
 
   if (search) {
     query = query.or(
@@ -26,9 +31,17 @@ router.get('/', async (req, res) => {
   if (from) query = query.gte('applied_at', from);
   if (to) query = query.lte('applied_at', to);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  const total = count || 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  res.json({
+    items: data || [],
+    total,
+    page,
+    page_size: pageSize,
+    total_pages: totalPages
+  });
 });
 
 router.get('/stats', async (req, res) => {

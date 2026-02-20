@@ -27,6 +27,7 @@ export default function TeamSharing() {
   const [selectedUserId, setSelectedUserId] = useState('')
 
   const [applications, setApplications] = useState([])
+  const [totalItems, setTotalItems] = useState(0)
   const [loadingApps, setLoadingApps] = useState(true)
   const [loadingTeam, setLoadingTeam] = useState(true)
   const [actionLoadingId, setActionLoadingId] = useState(null)
@@ -36,6 +37,8 @@ export default function TeamSharing() {
   const [filterPlatform, setFilterPlatform] = useState('')
   const [filterJobType, setFilterJobType] = useState('')
   const [filterWorkType, setFilterWorkType] = useState('')
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -87,6 +90,7 @@ export default function TeamSharing() {
   const fetchTeammateApplications = useCallback(async () => {
     if (!selectedUserId) {
       setApplications([])
+      setTotalItems(0)
       setLoadingApps(false)
       return
     }
@@ -99,15 +103,19 @@ export default function TeamSharing() {
         search: search || undefined,
         platform: filterPlatform || undefined,
         job_type: filterJobType || undefined,
-        work_type: filterWorkType || undefined
+        work_type: filterWorkType || undefined,
+        page: currentPage,
+        page_size: pageSize
       })
-      setApplications(data)
+      setApplications(data.items || [])
+      setTotalItems(data.total || 0)
+      setCurrentPage((prev) => (data.total_pages && prev > data.total_pages ? data.total_pages : prev))
     } catch (err) {
       setError(err.message)
     } finally {
       setLoadingApps(false)
     }
-  }, [selectedUserId, search, filterPlatform, filterJobType, filterWorkType])
+  }, [selectedUserId, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
 
   useEffect(() => {
     fetchTeamData()
@@ -149,6 +157,11 @@ export default function TeamSharing() {
     await supabase.auth.signOut()
     navigate('/signin')
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPageSafe = Math.min(currentPage, totalPages)
+  const startIdx = totalItems === 0 ? 0 : ((currentPageSafe - 1) * pageSize) + 1
+  const endIdx = Math.min(currentPageSafe * pageSize, totalItems)
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -304,9 +317,21 @@ export default function TeamSharing() {
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Teammate applications</h2>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <span>Per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
+                  className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
               <select
                 value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
+                onChange={(e) => { setSelectedUserId(e.target.value); setCurrentPage(1) }}
                 className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600 min-w-[240px]"
               >
                 {!teammates.length && <option value="">No teammates connected</option>}
@@ -339,14 +364,14 @@ export default function TeamSharing() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                 placeholder="Search by title, company, location..."
                 className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
               />
             </div>
             <select
               value={filterPlatform}
-              onChange={(e) => setFilterPlatform(e.target.value)}
+              onChange={(e) => { setFilterPlatform(e.target.value); setCurrentPage(1) }}
               className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
             >
               <option value="">All platforms</option>
@@ -356,7 +381,7 @@ export default function TeamSharing() {
             </select>
             <select
               value={filterJobType}
-              onChange={(e) => setFilterJobType(e.target.value)}
+              onChange={(e) => { setFilterJobType(e.target.value); setCurrentPage(1) }}
               className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
             >
               <option value="">All job types</option>
@@ -366,7 +391,7 @@ export default function TeamSharing() {
             </select>
             <select
               value={filterWorkType}
-              onChange={(e) => setFilterWorkType(e.target.value)}
+              onChange={(e) => { setFilterWorkType(e.target.value); setCurrentPage(1) }}
               className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
             >
               <option value="">All work types</option>
@@ -380,7 +405,7 @@ export default function TeamSharing() {
             <div className="flex justify-center py-16">
               <div className="w-6 h-6 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
             </div>
-          ) : applications.length === 0 ? (
+          ) : totalItems === 0 ? (
             <div className="text-center py-16 bg-gray-950 border border-gray-800 rounded-xl">
               <Briefcase size={32} className="text-gray-700 mx-auto mb-3" />
               <p className="text-gray-500 text-sm">
@@ -436,6 +461,28 @@ export default function TeamSharing() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800 text-xs text-gray-400">
+                <p>
+                  Showing {startIdx}-{endIdx} of {totalItems}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPageSafe === 1}
+                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+                  <span>Page {currentPageSafe} / {totalPages}</span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPageSafe === totalPages}
+                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(true)
 
   const [applications, setApplications] = useState([])
+  const [totalItems, setTotalItems] = useState(0)
   const [appsLoading, setAppsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -48,6 +49,8 @@ export default function AdminDashboard() {
   const [filterPlatform, setFilterPlatform] = useState('')
   const [filterJobType, setFilterJobType] = useState('')
   const [filterWorkType, setFilterWorkType] = useState('')
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -77,14 +80,18 @@ export default function AdminDashboard() {
         platform: filterPlatform || undefined,
         job_type: filterJobType || undefined,
         work_type: filterWorkType || undefined,
+        page: currentPage,
+        page_size: pageSize
       })
-      setApplications(data)
+      setApplications(data.items || [])
+      setTotalItems(data.total || 0)
+      setCurrentPage((prev) => (data.total_pages && prev > data.total_pages ? data.total_pages : prev))
     } catch (err) {
       setError(err.message)
     } finally {
       setAppsLoading(false)
     }
-  }, [selectedUser, search, filterPlatform, filterJobType, filterWorkType])
+  }, [selectedUser, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
 
   useEffect(() => {
     fetchUsers()
@@ -100,13 +107,20 @@ export default function AdminDashboard() {
     setFilterPlatform('')
     setFilterJobType('')
     setFilterWorkType('')
+    setCurrentPage(1)
     setView('applications')
   }
 
   const backToUsers = () => {
     setSelectedUser(null)
+    setCurrentPage(1)
     setView('users')
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPageSafe = Math.min(currentPage, totalPages)
+  const startIdx = totalItems === 0 ? 0 : ((currentPageSafe - 1) * pageSize) + 1
+  const endIdx = Math.min(currentPageSafe * pageSize, totalItems)
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -233,13 +247,27 @@ export default function AdminDashboard() {
                   {selectedUser ? selectedUser.name : 'All Applications'}
                 </h2>
               </div>
-              <button
-                onClick={fetchApplications}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <RefreshCw size={12} className={appsLoading ? 'animate-spin' : ''} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span>Per page</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
+                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-300"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+                <button
+                  onClick={fetchApplications}
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <RefreshCw size={12} className={appsLoading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {/* Filters */}
@@ -250,14 +278,14 @@ export default function AdminDashboard() {
                   <input
                     type="text"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                     placeholder="Search by title, company, location..."
                     className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
                   />
                 </div>
                 <select
                   value={filterPlatform}
-                  onChange={(e) => setFilterPlatform(e.target.value)}
+                  onChange={(e) => { setFilterPlatform(e.target.value); setCurrentPage(1) }}
                   className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
                 >
                   <option value="">All platforms</option>
@@ -265,7 +293,7 @@ export default function AdminDashboard() {
                 </select>
                 <select
                   value={filterJobType}
-                  onChange={(e) => setFilterJobType(e.target.value)}
+                  onChange={(e) => { setFilterJobType(e.target.value); setCurrentPage(1) }}
                   className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
                 >
                   <option value="">All job types</option>
@@ -273,7 +301,7 @@ export default function AdminDashboard() {
                 </select>
                 <select
                   value={filterWorkType}
-                  onChange={(e) => setFilterWorkType(e.target.value)}
+                  onChange={(e) => { setFilterWorkType(e.target.value); setCurrentPage(1) }}
                   className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
                 >
                   <option value="">All work types</option>
@@ -286,7 +314,7 @@ export default function AdminDashboard() {
               <div className="flex justify-center py-16">
                 <div className="w-6 h-6 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
               </div>
-            ) : applications.length === 0 ? (
+            ) : totalItems === 0 ? (
               <div className="text-center py-16 bg-gray-900 border border-gray-800 rounded-xl">
                 <Briefcase size={32} className="text-gray-700 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm">No applications found</p>
@@ -294,7 +322,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                 <p className="px-4 py-2 text-xs text-gray-500 border-b border-gray-800">
-                  {applications.length} application{applications.length !== 1 ? 's' : ''}
+                  {totalItems} application{totalItems !== 1 ? 's' : ''}
                 </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -351,6 +379,28 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800 text-xs text-gray-400">
+                  <p>
+                    Showing {startIdx}-{endIdx} of {totalItems}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPageSafe === 1}
+                      className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    <span>Page {currentPageSafe} / {totalPages}</span>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPageSafe === totalPages}
+                      className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
