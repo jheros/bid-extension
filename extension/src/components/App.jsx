@@ -21,10 +21,10 @@ export default function App() {
   const [datetime, setDatetime] = useState("");
 
   // Settings state
-  const [backendUrl, setBackendUrl] = useState("http://localhost:4000");
-  const [useAiExtractor, setUseAiExtractor] = useState(false);
+  const [backendUrl, setBackendUrl] = useState("http://192.168.110.252:4000");
+  const [useAiExtractor, setUseAiExtractor] = useState(true);
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
-  const [deepseekModel, setDeepseekModel] = useState("openrouter/aurora-alpha");
+  const [deepseekModel, setDeepseekModel] = useState("arcee-ai/trinity-large-preview:free");
 
   // Auth state
   const [authEmail, setAuthEmail] = useState("");
@@ -43,9 +43,10 @@ export default function App() {
         "authEmail",
       ]);
       if (result.backendUrl) setBackendUrl(result.backendUrl);
+      else setBackendUrl("http://192.168.110.252:4000");
       setUseAiExtractor(Boolean(result.useAiExtractor));
       setDeepseekApiKey(result.deepseekApiKey || "");
-      setDeepseekModel(result.deepseekModel || "deepseek-chat");
+      setDeepseekModel(result.deepseekModel || "arcee-ai/trinity-large-preview:free");
       if (result.authEmail) setAuthEmail(result.authEmail);
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -218,7 +219,7 @@ export default function App() {
       backendUrl: backendUrl.trim().replace(/\/$/, ""),
       useAiExtractor,
       deepseekApiKey: deepseekApiKey.trim(),
-      deepseekModel: deepseekModel.trim() || "deepseek-chat",
+      deepseekModel: deepseekModel.trim() || "arcee-ai/trinity-large-preview:free",
     });
     showStatus("Settings saved!", "success");
   };
@@ -362,6 +363,39 @@ export default function App() {
             {/* Settings Tab */}
             {activeTab === "settings" && (
               <div className="space-y-6">
+                {/* Setup Guide */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2">Setup Guide</h3>
+                  <ol className="list-decimal list-inside space-y-2 text-xs text-blue-900">
+                    <li>
+                      <span className="font-medium">Get an API key from OpenRouter:</span>{" "}
+                      Go to{" "}
+                      <a
+                        href="https://openrouter.ai/keys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:no-underline"
+                      >
+                        openrouter.ai/keys
+                      </a>
+                      , sign in, create a key, then paste it into the API Key field below.
+                    </li>
+                    <li>
+                      <span className="font-medium">Register an account:</span>{" "}
+                      If you do not have an account yet, use the registration link in the Account section.
+                    </li>
+                    <li>
+                      <span className="font-medium">Sign in from the extension:</span>{" "}
+                      Enter your email and password in the Account section and click Sign In.
+                    </li>
+                    <li>
+                      <span className="font-medium">Enable AI extraction:</span>{" "}
+                      If you want AI-based extraction, you must check{" "}
+                      <span className="font-semibold">Use OpenRouter for extraction</span>.
+                    </li>
+                  </ol>
+                </div>
+
                 {/* Account Section */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Account</h3>
@@ -379,37 +413,50 @@ export default function App() {
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleSignIn} className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input
-                          type="email"
-                          value={signInEmail}
-                          onChange={(e) => setSignInEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input
-                          type="password"
-                          value={signInPassword}
-                          onChange={(e) => setSignInPassword(e.target.value)}
-                          placeholder="••••••••"
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={authLoading}
-                        className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-60"
-                      >
-                        {authLoading ? "Signing in..." : "Sign In"}
-                      </button>
-                    </form>
+                    <div className="space-y-3">
+                      <form onSubmit={handleSignIn} className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                          <input
+                            type="email"
+                            value={signInEmail}
+                            onChange={(e) => setSignInEmail(e.target.value)}
+                            placeholder="you@example.com"
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                          <input
+                            type="password"
+                            value={signInPassword}
+                            onChange={(e) => setSignInPassword(e.target.value)}
+                            placeholder="••••••••"
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={authLoading}
+                          className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-60"
+                        >
+                          {authLoading ? "Signing in..." : "Sign In"}
+                        </button>
+                      </form>
+                      <p className="text-xs text-gray-600">
+                        Not yet registered?{" "}
+                        <a
+                          href="http://192.168.110.252:5173/signup"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-800 hover:underline font-medium"
+                        >
+                          Register here
+                        </a>
+                      </p>
+                    </div>
                   )}
                   {authStatus.text && (
                     <div
@@ -432,7 +479,7 @@ export default function App() {
                       type="url"
                       value={backendUrl}
                       onChange={(e) => setBackendUrl(e.target.value)}
-                      placeholder="http://localhost:4000"
+                      placeholder="http://192.168.110.252:4000"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                     />
@@ -465,10 +512,10 @@ export default function App() {
                         type="text"
                         value={deepseekModel}
                         onChange={(e) => setDeepseekModel(e.target.value)}
-                        placeholder="openrouter/aurora-alpha"
+                        placeholder="arcee-ai/trinity-large-preview:free"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                       />
-                      <small className="text-xs text-gray-500">Recommended: openrouter/aurora-alpha</small>
+                      <small className="text-xs text-gray-500">Recommended: arcee-ai/trinity-large-preview:free</small>
                     </div>
                   </div>
 

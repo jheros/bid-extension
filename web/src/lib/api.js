@@ -1,6 +1,6 @@
 import supabase from './supabase.js'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 async function authHeaders() {
   const { data } = await supabase.auth.getSession()

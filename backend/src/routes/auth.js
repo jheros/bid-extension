@@ -10,7 +10,7 @@ router.post('/signup', async (req, res) => {
     return res.status(400).json({ error: 'Email, password, and name are required' });
   }
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true});
 
   if (error) {
     return res.status(400).json({ error: error.message });
@@ -25,7 +25,7 @@ router.post('/signup', async (req, res) => {
   }
 
   res.status(201).json({
-    message: 'Account created. Check your email to confirm your account.',
+    message: 'Account created. You can now sign in.',
     user: { id: data.user.id, email: data.user.email }
   });
 });

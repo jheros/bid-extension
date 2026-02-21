@@ -37,7 +37,7 @@ export default function SignUp() {
       })
       const body = await res.json()
       if (!res.ok) throw new Error(body.error || 'Signup failed')
-      setSuccess('Account created! Check your email to confirm, then sign in.')
+      setSuccess('Account created! You can now sign in.')
       setTimeout(() => navigate('/signin'), 3000)
     } catch (err) {
       setError(err.message)
