@@ -17,7 +17,7 @@ app.use('/api/applications', applicationsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/team', teamRouter);
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => res.json({ status: 'Bid Extension Backend is running' }));
 
 if (process.env.NODE_ENV === "DEVELOPMENT") {
   app.listen(PORT, () => {
