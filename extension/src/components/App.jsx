@@ -21,7 +21,7 @@ export default function App() {
   const [datetime, setDatetime] = useState("");
 
   // Settings state
-  const [backendUrl, setBackendUrl] = useState("http://192.168.110.252:4000");
+  const [backendUrl, setBackendUrl] = useState("https://bid-extension.vercel.app");
   const [useAiExtractor, setUseAiExtractor] = useState(true);
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [deepseekModel, setDeepseekModel] = useState("arcee-ai/trinity-large-preview:free");
@@ -43,7 +43,7 @@ export default function App() {
         "authEmail",
       ]);
       if (result.backendUrl) setBackendUrl(result.backendUrl);
-      else setBackendUrl("http://192.168.110.252:4000");
+      else setBackendUrl("https://bid-extension.vercel.app");
       setUseAiExtractor(Boolean(result.useAiExtractor));
       setDeepseekApiKey(result.deepseekApiKey || "");
       setDeepseekModel(result.deepseekModel || "arcee-ai/trinity-large-preview:free");
@@ -486,7 +486,7 @@ export default function App() {
                       type="url"
                       value={backendUrl}
                       onChange={(e) => setBackendUrl(e.target.value)}
-                      placeholder="http://192.168.110.252:4000"
+                      placeholder="https://bid-extension.vercel.app"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                     />
                     <small className="text-xs text-gray-500">Used when Supabase is not configured in extension/src/config.js</small>
