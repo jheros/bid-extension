@@ -13,6 +13,7 @@
     "build:web": "cd ../web && npm run build"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
     "@tailwindcss/vite": "^4.1.18",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",

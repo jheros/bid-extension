@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 import TabBtn from "./ui/TabBtn";
 import { extractJobInfo } from "../utils/jobExtractor";
-import { getBangkokDateTimeLocal, formatDateTime } from "../utils/datetime";
+import { getBangkokDateTimeLocal, formatDateTime } from "../lib/datetime";
 
 export default function App() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,7 +21,7 @@ export default function App() {
   const [datetime, setDatetime] = useState("");
 
   // Settings state
-  const [backendUrl, setBackendUrl] = useState("https://bid-extension.vercel.app");
+  const [backendUrl, setBackendUrl] = useState("http://192.168.110.252:4000");
   const [useAiExtractor, setUseAiExtractor] = useState(true);
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [deepseekModel, setDeepseekModel] = useState("arcee-ai/trinity-large-preview:free");
@@ -43,7 +43,7 @@ export default function App() {
         "authEmail",
       ]);
       if (result.backendUrl) setBackendUrl(result.backendUrl);
-      else setBackendUrl("https://bid-extension.vercel.app");
+      else setBackendUrl("http://192.168.110.252:4000");
       setUseAiExtractor(Boolean(result.useAiExtractor));
       setDeepseekApiKey(result.deepseekApiKey || "");
       setDeepseekModel(result.deepseekModel || "arcee-ai/trinity-large-preview:free");
@@ -129,6 +129,13 @@ export default function App() {
       setSalary(finalInfo.salary || "");
       setSecurityClearance(finalInfo.securityClearance || "");
       setUrl(finalInfo.url || window.location.href);
+
+      if (finalInfo.company?.trim()) {
+        chrome.runtime.sendMessage({
+          type: "CHECK_SAME_COMPANY",
+          data: { company: finalInfo.company.trim() },
+        });
+      }
 
       if (!silent && !aiFailed) {
         showStatus("Page info extracted! Please review and save.", "success");
@@ -479,11 +486,10 @@ export default function App() {
                       type="url"
                       value={backendUrl}
                       onChange={(e) => setBackendUrl(e.target.value)}
-                      placeholder="https://bid-extension.vercel.app"
-                      required
+                      placeholder="http://192.168.110.252:4000"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                     />
-                    <small className="text-xs text-gray-500">URL of your Express backend server</small>
+                    <small className="text-xs text-gray-500">Used when Supabase is not configured in extension/src/config.js</small>
                   </div>
 
                   <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
