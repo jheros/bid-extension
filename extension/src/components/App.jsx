@@ -20,6 +20,9 @@ export default function App() {
   const [url, setUrl] = useState("");
   const [datetime, setDatetime] = useState("");
 
+  // Track form option: clear fields after save
+  const [clearAfterSave, setClearAfterSave] = useState(true);
+
   // Settings state
   const [backendUrl, setBackendUrl] = useState("https://bid-extension.vercel.app");
   const [useAiExtractor, setUseAiExtractor] = useState(true);
@@ -41,6 +44,7 @@ export default function App() {
         "deepseekApiKey",
         "deepseekModel",
         "authEmail",
+        "clearAfterSave",
       ]);
       if (result.backendUrl) setBackendUrl(result.backendUrl);
       else setBackendUrl("https://bid-extension.vercel.app");
@@ -48,6 +52,7 @@ export default function App() {
       setDeepseekApiKey(result.deepseekApiKey || "");
       setDeepseekModel(result.deepseekModel || "arcee-ai/trinity-large-preview:free");
       if (result.authEmail) setAuthEmail(result.authEmail);
+      setClearAfterSave(result.clearAfterSave !== false);
     } catch (error) {
       console.error("Error loading settings:", error);
     }
@@ -174,15 +179,17 @@ export default function App() {
     chrome.runtime.sendMessage({ type: "SAVE_APPLICATION", data }, (response) => {
       if (response?.success) {
         showStatus("Saved successfully!", "success");
-        setJobTitle("");
-        setCompany("");
-        setLocation("");
-        setWorkType("");
-        setJobType("");
-        setSalary("");
-        setSecurityClearance("");
-        setUrl("");
-        setDatetime(getBangkokDateTimeLocal());
+        if (clearAfterSave) {
+          setJobTitle("");
+          setCompany("");
+          setLocation("");
+          setWorkType("");
+          setJobType("");
+          setSalary("");
+          setSecurityClearance("");
+          setUrl("");
+          setDatetime(getBangkokDateTimeLocal());
+        }
       } else {
         showStatus(`Error: ${response?.error || "Unknown error"}`, "error");
       }
@@ -363,7 +370,6 @@ export default function App() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   />
                 </div>
-                
               </form>
             )}
 
@@ -493,6 +499,19 @@ export default function App() {
                   </div>
 
                   <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700">Clear form after save</label>
+                      <input
+                        type="checkbox"
+                        checked={clearAfterSave}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setClearAfterSave(checked);
+                          chrome.storage.local.set({ clearAfterSave: checked });
+                        }}
+                        className="h-4 w-4"
+                      />
+                    </div>
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-gray-700">Use OpenRouter for extraction</label>
                       <input

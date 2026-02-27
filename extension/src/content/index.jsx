@@ -1,38 +1,45 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "../components/App";
-import contentCss from "./content.css?inline";
 
-// Create a container for our React app
+// Import CSS as a raw string using Vite's ?inline query
+import contentStyles from "./content.css?inline";
+
 const root = document.createElement("div");
 root.id = "chrome-extension-inject-root";
-root.style.position = "fixed";
-root.style.top = "0";
-root.style.left = "0";
-root.style.width = "100vw";
-root.style.height = "100vh";
-root.style.pointerEvents = "none";
-root.style.zIndex = "2147483647";
-root.style.isolation = "isolate";
+Object.assign(root.style, {
+  position: "fixed",
+  top: "0",
+  left: "0",
+  width: "100vw",
+  height: "100vh",
+  pointerEvents: "none",
+  zIndex: "2147483647",
+  isolation: "isolate",
+});
 document.body.appendChild(root);
 
-// Shadow DOM for style isolation from the host page
+// Shadow DOM for full style isolation
 const shadowRoot = root.attachShadow({ mode: "open" });
 
-// Inject styles into shadow DOM
-const style = document.createElement("style");
-style.textContent = contentCss;
-shadowRoot.appendChild(style);
-
-// Container for React
 const reactRoot = document.createElement("div");
 reactRoot.id = "injected-app";
-reactRoot.style.width = "100%";
-reactRoot.style.height = "100%";
+Object.assign(reactRoot.style, {
+  width: "100%",
+  height: "100%",
+});
 shadowRoot.appendChild(reactRoot);
+
+// Inject Tailwind styles into shadow DOM only
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(contentStyles);
+
+shadowRoot.adoptedStyleSheets = [sheet];
+
+// Container for React
 
 ReactDOM.createRoot(reactRoot).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
