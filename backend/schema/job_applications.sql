@@ -9,6 +9,7 @@ create table if not exists public.job_applications (
   job_type text,
   salary text,
   security_clearance text,
+  resume text,
   url text not null,
   platform text not null default 'other',
   applied_at timestamptz not null default now(),

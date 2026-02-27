@@ -18,6 +18,7 @@ function buildPayload(data) {
     job_type: data.jobType || null,
     salary: data.salary || null,
     security_clearance: data.securityClearance || null,
+    resume: data.resume || null,
     url: data.url,
     platform,
     applied_at,

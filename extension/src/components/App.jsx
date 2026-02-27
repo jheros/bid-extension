@@ -17,6 +17,7 @@ export default function App() {
   const [jobType, setJobType] = useState("");
   const [salary, setSalary] = useState("");
   const [securityClearance, setSecurityClearance] = useState("");
+  const [resume, setResume] = useState("");
   const [url, setUrl] = useState("");
   const [datetime, setDatetime] = useState("");
 
@@ -172,6 +173,7 @@ export default function App() {
       jobType,
       salary,
       securityClearance,
+      resume,
       url,
       datetime: formatDateTime(datetime),
     };
@@ -187,6 +189,7 @@ export default function App() {
           setJobType("");
           setSalary("");
           setSecurityClearance("");
+          setResume("");
           setUrl("");
           setDatetime(getBangkokDateTimeLocal());
         }
@@ -234,8 +237,13 @@ export default function App() {
       useAiExtractor,
       deepseekApiKey: deepseekApiKey.trim(),
       deepseekModel: deepseekModel.trim() || "arcee-ai/trinity-large-preview:free",
+      clearAfterSave,
     });
     showStatus("Settings saved!", "success");
+    chrome.runtime.sendMessage({
+      type: "SHOW_NOTIFICATION",
+      data: { title: "Settings saved", message: "Your settings have been saved." },
+    });
   };
 
   useEffect(() => {
@@ -334,6 +342,7 @@ export default function App() {
                   { label: "Job Type", value: jobType, setter: setJobType, placeholder: "e.g., Full-time, Contract" },
                   { label: "Salary", value: salary, setter: setSalary, placeholder: "e.g., $90,000 - $120,000 / year" },
                   { label: "Security Clearance", value: securityClearance, setter: setSecurityClearance, placeholder: "e.g., Secret, TS/SCI" },
+                  { label: "Resume", value: resume, setter: setResume, placeholder: "e.g., link or version used (optional)" },
                 ].map(({ label, value, setter, placeholder, required }) => (
                   <div key={label}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -521,6 +530,9 @@ export default function App() {
                         className="h-4 w-4"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                       <input

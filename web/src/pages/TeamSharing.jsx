@@ -425,6 +425,7 @@ export default function TeamSharing() {
                       <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Platform</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Salary</th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Resume</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
@@ -457,6 +458,19 @@ export default function TeamSharing() {
                         </td>
                         <td className="px-4 py-3"><PlatformBadge platform={app.platform} /></td>
                         <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{app.salary || '—'}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs max-w-[140px] truncate">
+                          {app.resume ? (
+                            /^https?:\/\//i.test(app.resume) ? (
+                              <a href={app.resume} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white truncate block">
+                                {app.resume}
+                              </a>
+                            ) : (
+                              app.resume
+                            )
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

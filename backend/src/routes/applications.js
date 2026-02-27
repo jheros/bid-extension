@@ -91,7 +91,7 @@ router.get('/stats', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     job_title, company, location, work_type, job_type,
-    salary, security_clearance, url, platform, applied_at
+    salary, security_clearance, resume, url, platform, applied_at
   } = req.body;
 
   if (!job_title || !company || !url) {
@@ -122,6 +122,7 @@ router.post('/', async (req, res) => {
       job_type: job_type || null,
       salary: salary || null,
       security_clearance: security_clearance || null,
+      resume: resume || null,
       url,
       platform: platform || 'other',
       applied_at: applied_at || new Date().toISOString()
