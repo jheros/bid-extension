@@ -261,7 +261,7 @@ export default function App() {
   return (
     <div className="fixed inset-0 pointer-events-none z-2147483647 whitespace-normal">
       <aside
-        className={`fixed right-0 top-[15vh] h-[70vh] w-[420px] bg-white shadow-2xl border-2 border-gray-700 rounded-lg pointer-events-auto transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-[15vh] h-[70vh] w-105 bg-white shadow-2xl border-2 border-gray-700 rounded-lg pointer-events-auto transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
