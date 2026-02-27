@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import supabase from '../lib/supabase.js';
+import supabase, { fetchAllBatched } from '../lib/supabase.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
@@ -65,12 +65,17 @@ router.get('/users', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  const { data: counts } = await supabase
-    .from('job_applications')
-    .select('user_id');
+  let counts;
+  try {
+    counts = await fetchAllBatched(({ from, to }) =>
+      supabase.from('job_applications').select('user_id').range(from, to)
+    );
+  } catch {
+    counts = [];
+  }
 
   const countMap = {};
-  for (const row of counts || []) {
+  for (const row of counts) {
     countMap[row.user_id] = (countMap[row.user_id] || 0) + 1;
   }
 

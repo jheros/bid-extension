@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import supabase from '../lib/supabase.js';
+import supabase, { fetchAllBatched } from '../lib/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
@@ -60,12 +60,18 @@ router.get('/stats', async (req, res) => {
   const weekStart = new Date(dayStart - mondayOffset * 86400000);
   const monthStart = new Date(Date.UTC(y, m, 1, dayBoundaryHour, 0, 0));
 
-  const { data, error } = await supabase
-    .from('job_applications')
-    .select('applied_at, platform')
-    .eq('user_id', req.user.id);
-
-  if (error) return res.status(500).json({ error: error.message });
+  let data;
+  try {
+    data = await fetchAllBatched(({ from, to }) =>
+      supabase
+        .from('job_applications')
+        .select('applied_at, platform')
+        .eq('user_id', req.user.id)
+        .range(from, to)
+    );
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 
   const bucket = () => ({ total: 0, byPlatform: {} });
   const add = (b, platform) => {
