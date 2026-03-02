@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { LogOut, Trash2, ExternalLink, Search, RefreshCw, Briefcase, ShieldCheck, Users2 } from 'lucide-react'
+import { LogOut, Trash2, ExternalLink, Search, RefreshCw, Briefcase, ShieldCheck, Users2, Calendar, List, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
+import { getTodayBangkok, getBangkokDayRange } from '../lib/dateUtils.js'
 
 const PLATFORMS = ['greenhouse', 'lever', 'workday', 'linkedin', 'indeed', 'smartrecruiters', 'jobvite', 'icims', 'workable', 'ashbyhq', 'other']
 const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary']
@@ -45,6 +46,17 @@ export default function Dashboard() {
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
+  const [viewMode, setViewMode] = useState('list') // 'list' | 'calendar'
+  const [calendarDate, setCalendarDate] = useState(() => getTodayBangkok())
+  const [pageInputVal, setPageInputVal] = useState('1')
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const currentPageSafe = Math.min(currentPage, totalPages)
+
+  useEffect(() => {
+    setPageInputVal(String(currentPageSafe))
+  }, [currentPageSafe])
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setUser(data.user)
@@ -75,14 +87,21 @@ export default function Dashboard() {
     setLoading(true)
     setError('')
     try {
-      const data = await api.getApplications({
-        search: search || undefined,
-        platform: filterPlatform || undefined,
-        job_type: filterJobType || undefined,
-        work_type: filterWorkType || undefined,
-        page: currentPage,
-        page_size: pageSize
-      })
+      const isCalendar = viewMode === 'calendar'
+      const params = isCalendar
+        ? (() => {
+            const { from, to } = getBangkokDayRange(calendarDate)
+            return { from, to, page: currentPage, page_size: pageSize }
+          })()
+        : {
+            search: search || undefined,
+            platform: filterPlatform || undefined,
+            job_type: filterJobType || undefined,
+            work_type: filterWorkType || undefined,
+            page: currentPage,
+            page_size: pageSize
+          }
+      const data = await api.getApplications(params)
       setApplications(data.items || [])
       setTotalItems(data.total || 0)
       setCurrentPage((prev) => (data.total_pages && prev > data.total_pages ? data.total_pages : prev))
@@ -91,7 +110,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
+  }, [viewMode, calendarDate, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
 
   useEffect(() => {
     fetchApplications()
@@ -124,8 +143,6 @@ export default function Dashboard() {
       .slice(0, 3)
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-  const currentPageSafe = Math.min(currentPage, totalPages)
   const startIdx = totalItems === 0 ? 0 : ((currentPageSafe - 1) * pageSize) + 1
   const endIdx = Math.min(currentPageSafe * pageSize, totalItems)
 
@@ -178,14 +195,46 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
               Applications (08:00 GMT+7 cutoff)
             </h2>
-            <button
-              onClick={() => { fetchStats(); fetchApplications() }}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              <RefreshCw size={12} className={statsLoading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex rounded-lg bg-gray-900 border border-gray-800 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors ${viewMode === 'list' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <List size={14} />
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('calendar'); setCurrentPage(1) }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors ${viewMode === 'calendar' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Calendar size={14} />
+                  Calendar
+                </button>
+              </div>
+              <button
+                onClick={() => { fetchStats(); fetchApplications() }}
+                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                <RefreshCw size={12} className={statsLoading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
           </div>
+          {viewMode === 'calendar' && (
+            <div className="mb-4 flex items-center gap-2">
+              <label htmlFor="calendar-day" className="text-sm text-gray-400">Date (Bangkok):</label>
+              <input
+                id="calendar-day"
+                type="date"
+                value={calendarDate}
+                onChange={(e) => { setCalendarDate(e.target.value); setCurrentPage(1) }}
+                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-gray-600"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
@@ -206,72 +255,62 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-                placeholder="Search by title, company, location..."
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
-              />
+        {viewMode === 'list' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+                  placeholder="Search by title, company, location..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
+                />
+              </div>
+              <select
+                value={filterPlatform}
+                onChange={(e) => { setFilterPlatform(e.target.value); setCurrentPage(1) }}
+                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
+              >
+                <option value="">All platforms</option>
+                {PLATFORMS.map((p) => (
+                  <option key={p} value={p} className="capitalize">{p}</option>
+                ))}
+              </select>
+              <select
+                value={filterJobType}
+                onChange={(e) => { setFilterJobType(e.target.value); setCurrentPage(1) }}
+                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
+              >
+                <option value="">All job types</option>
+                {JOB_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <select
+                value={filterWorkType}
+                onChange={(e) => { setFilterWorkType(e.target.value); setCurrentPage(1) }}
+                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
+              >
+                <option value="">All work types</option>
+                {WORK_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
-            <select
-              value={filterPlatform}
-              onChange={(e) => { setFilterPlatform(e.target.value); setCurrentPage(1) }}
-              className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
-            >
-              <option value="">All platforms</option>
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p} className="capitalize">{p}</option>
-              ))}
-            </select>
-            <select
-              value={filterJobType}
-              onChange={(e) => { setFilterJobType(e.target.value); setCurrentPage(1) }}
-              className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
-            >
-              <option value="">All job types</option>
-              {JOB_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <select
-              value={filterWorkType}
-              onChange={(e) => { setFilterWorkType(e.target.value); setCurrentPage(1) }}
-              className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-600"
-            >
-              <option value="">All work types</option>
-              {WORK_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
           </div>
-        </div>
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-gray-400">
               {loading
                 ? 'Loading...'
-                : `${totalItems} application${totalItems !== 1 ? 's' : ''}`}
+                : viewMode === 'calendar'
+                  ? `${totalItems} application${totalItems !== 1 ? 's' : ''} on ${calendarDate}`
+                  : `${totalItems} application${totalItems !== 1 ? 's' : ''}`}
             </p>
-            {!loading && totalItems > 0 && (
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>Per page</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
-                  className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-300"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-            )}
           </div>
 
           {error && (
@@ -382,26 +421,77 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800 text-xs text-gray-400">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800 text-xs text-gray-400 flex-wrap gap-2">
                 <p>
                   Showing {startIdx}-{endIdx} of {totalItems}
+                  {viewMode === 'calendar' && ` on ${calendarDate}`}
                 </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPageSafe === 1}
-                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
-                  >
-                    Prev
-                  </button>
-                  <span>Page {currentPageSafe} / {totalPages}</span>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPageSafe === totalPages}
-                    className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span>Per page</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1) }}
+                      className="px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-300"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPageSafe === 1}
+                      className="p-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                      title="First page"
+                    >
+                      <ChevronsLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPageSafe === 1}
+                      className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    <span className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={pageInputVal}
+                        onChange={(e) => setPageInputVal(e.target.value)}
+                        onBlur={() => {
+                          const n = Math.max(1, Math.min(totalPages, parseInt(pageInputVal, 10) || 1))
+                          setCurrentPage(n)
+                          setPageInputVal(String(n))
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.target.blur()
+                          }
+                        }}
+                        className="w-10 px-1 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-300 text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="text-gray-500">/ {totalPages}</span>
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPageSafe === totalPages}
+                      className="px-2 py-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPageSafe === totalPages}
+                      className="p-1 rounded bg-gray-800 border border-gray-700 disabled:opacity-50"
+                      title="Last page"
+                    >
+                      <ChevronsRight size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
