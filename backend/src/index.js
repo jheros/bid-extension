@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+
 app.use('/api/auth', authRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/admin', adminRouter);
@@ -25,4 +26,4 @@ if (process.env.NODE_ENV === "DEVELOPMENT") {
   });
 }
 
-export default app;
+// export default app;

@@ -313,8 +313,13 @@ export default function Dashboard() {
                     {applications.map((app) => (
                       <tr key={app.id} className="hover:bg-gray-800/50 transition-colors">
                         <td className="px-4 py-3 text-gray-400 whitespace-nowrap text-xs">
-                          {new Date(app.applied_at).toLocaleDateString('en-GB', {
-                            day: '2-digit', month: 'short', year: 'numeric'
+                          {new Date(app.applied_at).toLocaleString('en-GB', {
+                            timeZone: 'Asia/Bangkok',
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
                           })}
                         </td>
                         <td className="px-4 py-3 max-w-[200px]">
