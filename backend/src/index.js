@@ -26,4 +26,4 @@ if (process.env.NODE_ENV === "DEVELOPMENT") {
   });
 }
 
-// export default app;
+export default app;
