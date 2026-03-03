@@ -117,11 +117,9 @@ export default function Dashboard() {
     navigate('/signin')
   }
 
-  const topPlatforms = (bucket) => {
+  const allPlatforms = (bucket) => {
     if (!bucket?.byPlatform) return []
-    return Object.entries(bucket.byPlatform)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
+    return Object.entries(bucket.byPlatform).sort((a, b) => b[1] - a[1])
   }
 
   const startIdx = totalItems === 0 ? 0 : ((currentPageSafe - 1) * pageSize) + 1
@@ -182,17 +180,17 @@ export default function Dashboard() {
             <StatCard
               label="Today"
               value={statsLoading ? '—' : (stats?.day?.total ?? 0)}
-              sub={topPlatforms(stats?.day).map(([p, n]) => `${p}: ${n}`).join(' · ') || undefined}
+              sub={allPlatforms(stats?.day).map(([p, n]) => `${p}: ${n}`).join(' · ') || undefined}
             />
             <StatCard
               label="This Week"
               value={statsLoading ? '—' : (stats?.week?.total ?? 0)}
-              sub={topPlatforms(stats?.week).map(([p, n]) => `${p}: ${n}`).join(' · ') || undefined}
+              sub={allPlatforms(stats?.week).map(([p, n]) => `${p}: ${n}`).join(' · ') || undefined}
             />
             <StatCard
               label="This Month"
               value={statsLoading ? '—' : (stats?.month?.total ?? 0)}
-              sub={topPlatforms(stats?.month).map(([p, n]) => `${p}: ${n}`).join(' · ') || undefined}
+              sub={allPlatforms(stats?.month).map(([p, n]) => `${p}: ${n}`).join(' · ') || undefined}
             />
           </div>
         </div>
