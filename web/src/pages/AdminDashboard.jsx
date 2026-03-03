@@ -190,7 +190,10 @@ export default function AdminDashboard() {
     if (created?.id) setExpandedGroupIds((prev) => new Set([...prev, created.id]))
   }
 
-  const handleApplyGroupChanges = async (groupId, { adds, removes }) => {
+  const handleApplyGroupChanges = async (groupId, { name, adds, removes }) => {
+    if (name !== undefined) {
+      await api.admin.updateGroup(groupId, name)
+    }
     for (const userId of removes) {
       await api.admin.removeGroupMember(groupId, userId)
     }

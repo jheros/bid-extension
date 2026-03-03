@@ -20,7 +20,7 @@ export default function Pagination({
   if (variant === 'simple') {
     return (
       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-800 text-xs text-gray-400">
-        <p>Showing {startIdx}-{endIdx} of {totalItems}</p>
+        <p>Showing {startIdx}-{endIdx} of {totalItems}{suffix}</p>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}

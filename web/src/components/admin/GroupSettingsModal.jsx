@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, UserPlus } from 'lucide-react'
 import { RoleBadge } from '../ui/index.js'
 
@@ -11,9 +11,14 @@ export default function GroupSettingsModal({
 }) {
   const baseMemberIds = new Set(group.member_ids || [])
 
+  const [nameInput, setNameInput] = useState(group.name || '')
   const [pendingAdds, setPendingAdds] = useState(new Set())
   const [pendingRemoves, setPendingRemoves] = useState(new Set())
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    setNameInput(group.name || '')
+  }, [group.id, group.name])
 
   const effectiveMemberIds = new Set([
     ...baseMemberIds,
@@ -24,7 +29,8 @@ export default function GroupSettingsModal({
   const memberUsers = [...effectiveMemberIds].map((id) => userById[id]).filter(Boolean)
   const availableToAdd = users.filter((u) => !effectiveMemberIds.has(u.id))
 
-  const hasChanges = pendingAdds.size > 0 || pendingRemoves.size > 0
+  const nameChanged = (nameInput.trim() || '') !== (group.name || '').trim()
+  const hasChanges = nameChanged || pendingAdds.size > 0 || pendingRemoves.size > 0
 
   const handleAdd = (userId) => {
     setPendingAdds((prev) => new Set([...prev, userId]))
@@ -52,6 +58,7 @@ export default function GroupSettingsModal({
     setSubmitting(true)
     try {
       await onApplyChanges(group.id, {
+        name: nameChanged ? nameInput.trim() : undefined,
         adds: [...pendingAdds],
         removes: [...pendingRemoves]
       })
@@ -68,7 +75,7 @@ export default function GroupSettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
-          <h3 className="font-semibold text-white">Group settings: {group.name}</h3>
+          <h3 className="font-semibold text-white">Group settings</h3>
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
@@ -77,6 +84,17 @@ export default function GroupSettingsModal({
           </button>
         </div>
         <div className="p-4 space-y-4 flex-1 min-h-0 overflow-y-auto">
+          <div>
+            <label htmlFor="group-settings-name" className="block text-sm font-medium text-gray-400 mb-2">Group name</label>
+            <input
+              id="group-settings-name"
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="Group name"
+              className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-gray-600"
+            />
+          </div>
           <div>
             <h4 className="text-sm font-medium text-gray-400 mb-2">Members ({memberUsers.length})</h4>
             <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -137,7 +155,7 @@ export default function GroupSettingsModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting || !hasChanges}
+            disabled={submitting || !hasChanges || (nameChanged && !nameInput.trim())}
             className="px-4 py-1.5 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Saving...' : 'Save'}
