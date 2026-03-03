@@ -83,6 +83,25 @@ async function getAcceptedTeammateIds(userId) {
   return (data || []).map((row) => (row.requester_id === userId ? row.receiver_id : row.requester_id));
 }
 
+async function getGroupMemberIds(userId) {
+  const { data: memberships, error } = await supabase
+    .from('group_members')
+    .select('group_id')
+    .eq('user_id', userId);
+
+  if (error || !memberships?.length) return [];
+
+  const groupIds = memberships.map((m) => m.group_id);
+  const { data: members, error: memErr } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .in('group_id', groupIds)
+    .neq('user_id', userId);
+
+  if (memErr) return [];
+  return [...new Set((members || []).map((m) => m.user_id))];
+}
+
 router.get('/requests', async (req, res) => {
   const meId = req.user.id;
 
@@ -232,19 +251,23 @@ router.get('/teammates', async (req, res) => {
   const meId = req.user.id;
 
   try {
-    const teammateIds = await getAcceptedTeammateIds(meId);
-    if (!teammateIds.length) return res.json([]);
+    const [teammateIds, groupMemberIds] = await Promise.all([
+      getAcceptedTeammateIds(meId),
+      getGroupMemberIds(meId)
+    ]);
+    const allIds = [...new Set([...teammateIds, ...groupMemberIds])];
+    if (!allIds.length) return res.json([]);
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name')
-      .in('id', teammateIds);
+      .in('id', allIds);
     if (profilesError) return res.status(500).json({ error: profilesError.message });
 
-    const authUsersById = await getAuthUsersByIds(teammateIds);
+    const authUsersById = await getAuthUsersByIds(allIds);
     const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
 
-    const teammates = teammateIds.map((id) => ({
+    const teammates = allIds.map((id) => ({
       id,
       name: profileMap[id]?.name || null,
       email: authUsersById[id]?.email || null
@@ -269,8 +292,11 @@ router.get('/applications', async (req, res) => {
   }
 
   try {
-    const teammateIds = await getAcceptedTeammateIds(meId);
-    const allowedIds = new Set([meId, ...teammateIds]);
+    const [teammateIds, groupMemberIds] = await Promise.all([
+      getAcceptedTeammateIds(meId),
+      getGroupMemberIds(meId)
+    ]);
+    const allowedIds = new Set([meId, ...teammateIds, ...groupMemberIds]);
 
     if (!allowedIds.has(user_id)) {
       return res.status(403).json({ error: 'You do not have access to this user applications' });

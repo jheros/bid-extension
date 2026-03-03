@@ -1,20 +1,18 @@
 import { ExternalLink, Trash2 } from 'lucide-react'
 import PlatformBadge from '../ui/PlatformBadge.jsx'
 
-const DATE_FORMAT = {
-  timeZone: 'Asia/Bangkok',
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-}
+const BANGKOK = { timeZone: 'Asia/Bangkok' }
 
-const DATE_FORMAT_SHORT = {
-  timeZone: 'Asia/Bangkok',
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
+function DateCell({ appliedAt }) {
+  const d = new Date(appliedAt)
+  const dateStr = d.toLocaleDateString('en-CA', { ...BANGKOK, year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/-/g, '/')
+  const timeStr = d.toLocaleTimeString('en-GB', { ...BANGKOK, hour: '2-digit', minute: '2-digit', hour12: false })
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-gray-400">{dateStr}</span>
+      <span className="text-gray-500 text-xs text-center">{timeStr}</span>
+    </div>
+  )
 }
 
 function ResumeCell({ resume }) {
@@ -50,14 +48,11 @@ export default function ApplicationsTable({
   showDeleteColumn = false,
   deletingId,
   onDelete,
-  dateFormat = 'full',
   pagination,
 }) {
-  const dateOpts = dateFormat === 'short' ? DATE_FORMAT_SHORT : DATE_FORMAT
-
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto applications-table-scroll">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-800 text-left">
@@ -65,28 +60,28 @@ export default function ApplicationsTable({
               {showUserColumn && (
                 <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">User</th>
               )}
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Job</th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide min-w-[280px]">Job</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Company</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Location</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Platform</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Salary</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Resume</th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Platform</th>
               {showDeleteColumn && <th className="px-4 py-3"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
             {applications.map((app) => (
               <tr key={app.id} className="hover:bg-gray-800/50 transition-colors">
-                <td className="px-4 py-3 text-gray-400 whitespace-nowrap text-xs">
-                  {new Date(app.applied_at).toLocaleString('en-GB', dateOpts)}
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <DateCell appliedAt={app.applied_at} />
                 </td>
                 {showUserColumn && (
                   <td className="px-4 py-3 text-gray-300 text-xs whitespace-nowrap">
                     {app.user_name || '—'}
                   </td>
                 )}
-                <td className="px-4 py-3 max-w-[200px]">
+                <td className="px-4 py-3 min-w-[280px] max-w-[400px]">
                   <a
                     href={app.url}
                     target="_blank"
@@ -102,14 +97,14 @@ export default function ApplicationsTable({
                 <td className="px-4 py-3 whitespace-nowrap">
                   <TypeCell jobType={app.job_type} workType={app.work_type} />
                 </td>
-                <td className="px-4 py-3">
-                  <PlatformBadge platform={app.platform} />
-                </td>
                 <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                   {app.salary || '—'}
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs max-w-[140px] truncate">
                   <ResumeCell resume={app.resume} />
+                </td>
+                <td className="px-4 py-3">
+                  <PlatformBadge platform={app.platform} />
                 </td>
                 {showDeleteColumn && (
                   <td className="px-4 py-3">

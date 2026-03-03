@@ -59,6 +59,23 @@ export const api = {
       const qs = buildQs(params)
       return request(`/api/admin/applications${qs ? `?${qs}` : ''}`)
     },
-    getUsers: () => request('/api/admin/users'),
+    getUsers: (params = {}) => {
+      const qs = buildQs(params)
+      return request(`/api/admin/users${qs ? `?${qs}` : ''}`)
+    },
+    getGroups: () => request('/api/admin/groups'),
+    createGroup: (name) =>
+      request('/api/admin/groups', { method: 'POST', body: JSON.stringify({ name }) }),
+    updateGroup: (id, name) =>
+      request(`/api/admin/groups/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+    deleteGroup: (id) =>
+      request(`/api/admin/groups/${id}`, { method: 'DELETE' }),
+    addGroupMember: (groupId, userId) =>
+      request(`/api/admin/groups/${groupId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId }),
+      }),
+    removeGroupMember: (groupId, userId) =>
+      request(`/api/admin/groups/${groupId}/members/${userId}`, { method: 'DELETE' }),
   },
 }

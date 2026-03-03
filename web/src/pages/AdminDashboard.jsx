@@ -1,26 +1,33 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
-  Briefcase, LogOut, ShieldCheck, Users, RefreshCw, ChevronLeft, Calendar, List
+  Briefcase, LogOut, ShieldCheck, Users, RefreshCw, ChevronLeft, Calendar, Eye, Plus, Search
 } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
 import { getTodayBangkok, getBangkokDayRange } from '../lib/dateUtils.js'
 import { PageHeader } from '../components/layout/index.js'
-import { RoleBadge, LoadingSpinner, Alert, EmptyState } from '../components/ui/index.js'
+import { LoadingSpinner, Alert, EmptyState } from '../components/ui/index.js'
 import {
   ApplicationFilters,
   ApplicationsTable,
   Pagination,
   ViewModeToggle,
 } from '../components/applications/index.js'
+import { UsersByGroupAccordion, CreateGroupModal, GroupSettingsModal } from '../components/admin/index.js'
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [view, setView] = useState('users')
   const [selectedUser, setSelectedUser] = useState(null)
 
   const [users, setUsers] = useState([])
+  const [groups, setGroups] = useState([])
   const [usersLoading, setUsersLoading] = useState(true)
+  const [groupFilter, setGroupFilter] = useState('')
+  const [searchName, setSearchName] = useState('')
+  const [expandedGroupIds, setExpandedGroupIds] = useState(new Set())
+  const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [groupSettingsGroup, setGroupSettingsGroup] = useState(null)
 
   const [applications, setApplications] = useState([])
   const [totalItems, setTotalItems] = useState(0)
@@ -38,24 +45,29 @@ export default function AdminDashboard() {
   const [calendarDate, setCalendarDate] = useState(() => getTodayBangkok())
   const [calendarUserId, setCalendarUserId] = useState('')
   const [pageInputVal, setPageInputVal] = useState('1')
+  const [usersDate, setUsersDate] = useState(() => getTodayBangkok())
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     navigate('/signin')
   }
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsersAndGroups = useCallback(async () => {
     setUsersLoading(true)
     setError('')
     try {
-      const data = await api.admin.getUsers()
-      setUsers(data)
+      const [usersData, groupsData] = await Promise.all([
+        api.admin.getUsers({ date: usersDate }),
+        api.admin.getGroups()
+      ])
+      setUsers(usersData)
+      setGroups(groupsData)
     } catch (err) {
       setError(err.message)
     } finally {
       setUsersLoading(false)
     }
-  }, [])
+  }, [usersDate])
 
   const fetchApplications = useCallback(async () => {
     const isCalendar = appsViewMode === 'calendar' && calendarUserId
@@ -99,8 +111,8 @@ export default function AdminDashboard() {
   }, [appsViewMode, calendarDate, calendarUserId, selectedUser, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
 
   useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
+    fetchUsersAndGroups()
+  }, [fetchUsersAndGroups])
 
   useEffect(() => {
     if (view === 'applications') fetchApplications()
@@ -139,6 +151,55 @@ export default function AdminDashboard() {
 
   const resetPage = () => setCurrentPage(1)
 
+  const nameMatchesSearch = (u) => {
+    if (!searchName.trim()) return true
+    const q = searchName.trim().toLowerCase()
+    return (u.name || '').toLowerCase().includes(q)
+  }
+  const filteredUsers = users.filter(nameMatchesSearch)
+
+  const filteredGroups = groupFilter === ''
+    ? groups
+    : groupFilter === 'ungrouped'
+      ? []
+      : groups.filter((g) => g.id === groupFilter)
+
+  const ungroupedUsers = filteredUsers.filter((u) => !(u.group_ids || []).length)
+  const showUngrouped = groupFilter === '' || groupFilter === 'ungrouped'
+
+  const toggleGroup = (groupId) => {
+    setExpandedGroupIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) next.delete(groupId)
+      else next.add(groupId)
+      return next
+    })
+  }
+
+  const handleCreateGroup = async (name, selectedUserIds = []) => {
+    const created = await api.admin.createGroup(name)
+    for (const userId of selectedUserIds) {
+      await api.admin.addGroupMember(created.id, userId)
+    }
+    const [usersData, groupsData] = await Promise.all([
+      api.admin.getUsers({ date: usersDate }),
+      api.admin.getGroups()
+    ])
+    setUsers(usersData)
+    setGroups(groupsData)
+    if (created?.id) setExpandedGroupIds((prev) => new Set([...prev, created.id]))
+  }
+
+  const handleApplyGroupChanges = async (groupId, { adds, removes }) => {
+    for (const userId of removes) {
+      await api.admin.removeGroupMember(groupId, userId)
+    }
+    for (const userId of adds) {
+      await api.admin.addGroupMember(groupId, userId)
+    }
+    await fetchUsersAndGroups()
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <PageHeader
@@ -161,62 +222,94 @@ export default function AdminDashboard() {
 
         {view === 'users' && (
           <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users size={16} className="text-gray-400" />
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">All Users</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-gray-400" />
+                  <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Users by Group</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={searchName}
+                      onChange={(e) => setSearchName(e.target.value)}
+                      placeholder="Search by name..."
+                      className="pl-8 pr-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 w-48"
+                    />
+                  </div>
+                  <select
+                    value={groupFilter}
+                    onChange={(e) => setGroupFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-gray-600 min-w-[140px]"
+                  >
+                    <option value="">All users</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                    <option value="ungrouped">Ungrouped only</option>
+                  </select>
+                </div>
               </div>
-              <button
-                onClick={fetchUsers}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <RefreshCw size={12} className={usersLoading ? 'animate-spin' : ''} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={usersDate}
+                  onChange={(e) => setUsersDate(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-gray-600"
+                />
+                <button
+                  onClick={() => setShowCreateGroup(true)}
+                  className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 px-2 py-1.5 rounded-lg border border-amber-700/50 hover:bg-amber-950/30 transition-colors"
+                >
+                  <Plus size={12} />
+                  Create group
+                </button>
+                <button
+                  onClick={fetchUsersAndGroups}
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <RefreshCw size={12} className={usersLoading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
             </div>
+
+            {showCreateGroup && (
+              <CreateGroupModal
+                onClose={() => setShowCreateGroup(false)}
+                onSubmit={handleCreateGroup}
+                users={users}
+              />
+            )}
+
+            {groupSettingsGroup && (
+              <GroupSettingsModal
+                group={groups.find((g) => g.id === groupSettingsGroup.id) || groupSettingsGroup}
+                users={users}
+                userById={Object.fromEntries(users.map((u) => [u.id, u]))}
+                onClose={() => setGroupSettingsGroup(null)}
+                onApplyChanges={handleApplyGroupChanges}
+              />
+            )}
 
             {usersLoading ? (
               <LoadingSpinner />
             ) : users.length === 0 ? (
               <EmptyState icon={Users} title="No users found" />
+            ) : filteredUsers.length === 0 ? (
+              <EmptyState icon={Users} title="No users match your filters" />
             ) : (
-              <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-800 text-left">
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Name</th>
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Role</th>
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Applications</th>
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Joined</th>
-                        <th className="px-4 py-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-gray-800/50 transition-colors">
-                          <td className="px-4 py-3 text-white font-medium">{u.name}</td>
-                          <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
-                          <td className="px-4 py-3 text-gray-300">{u.application_count}</td>
-                          <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                            {new Date(u.created_at).toLocaleDateString('en-GB', {
-                              day: '2-digit', month: 'short', year: 'numeric'
-                            })}
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => openUserApplications(u)}
-                              className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-700 transition-colors"
-                            >
-                              View applications
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <UsersByGroupAccordion
+                users={filteredUsers}
+                groups={filteredGroups}
+                expandedGroupIds={expandedGroupIds}
+                onToggleGroup={toggleGroup}
+                onView={openUserApplications}
+                onOpenGroupSettings={setGroupSettingsGroup}
+                showUngrouped={showUngrouped}
+              />
             )}
           </>
         )}

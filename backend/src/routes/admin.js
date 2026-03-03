@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import supabase, { fetchAllBatched } from '../lib/supabase.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { getBangkokDayRange, getBangkokWeekRange, getBangkokMonthRange } from '../lib/dateUtils.js';
 
 const router = Router();
 
@@ -79,7 +80,150 @@ router.get('/users', async (req, res) => {
     countMap[row.user_id] = (countMap[row.user_id] || 0) + 1;
   }
 
-  res.json(profiles.map((u) => ({ ...u, application_count: countMap[u.id] || 0 })));
+  let dailyMap = {};
+  let weeklyMap = {};
+  let monthlyMap = {};
+  const dateStr = req.query.date;
+  if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const dayRange = getBangkokDayRange(dateStr);
+    const weekRange = getBangkokWeekRange(dateStr);
+    const monthRange = getBangkokMonthRange(dateStr);
+    let appsInRange;
+    try {
+      appsInRange = await fetchAllBatched(({ from, to }) =>
+        supabase
+          .from('job_applications')
+          .select('user_id, applied_at')
+          .gte('applied_at', monthRange.from)
+          .lte('applied_at', monthRange.to)
+          .range(from, to)
+      );
+    } catch {
+      appsInRange = [];
+    }
+    const dayFrom = new Date(dayRange.from).getTime();
+    const dayTo = new Date(dayRange.to).getTime();
+    const weekFrom = new Date(weekRange.from).getTime();
+    const weekTo = new Date(weekRange.to).getTime();
+    const monthFrom = new Date(monthRange.from).getTime();
+    const monthTo = new Date(monthRange.to).getTime();
+    for (const row of appsInRange) {
+      const uid = row.user_id;
+      const ts = new Date(row.applied_at).getTime();
+      if (ts >= dayFrom && ts <= dayTo) dailyMap[uid] = (dailyMap[uid] || 0) + 1;
+      if (ts >= weekFrom && ts <= weekTo) weeklyMap[uid] = (weeklyMap[uid] || 0) + 1;
+      if (ts >= monthFrom && ts <= monthTo) monthlyMap[uid] = (monthlyMap[uid] || 0) + 1;
+    }
+  }
+
+  const { data: memberships } = await supabase
+    .from('group_members')
+    .select('group_id, user_id');
+  const groupsByUser = {};
+  const userGroupIds = {};
+  for (const m of memberships || []) {
+    userGroupIds[m.user_id] = userGroupIds[m.user_id] || [];
+    userGroupIds[m.user_id].push(m.group_id);
+  }
+  const groupIds = [...new Set((memberships || []).map((m) => m.group_id))];
+  const { data: groups } = groupIds.length
+    ? await supabase.from('groups').select('id, name').in('id', groupIds)
+    : { data: [] };
+  const groupMap = Object.fromEntries((groups || []).map((g) => [g.id, g]));
+
+  res.json(profiles.map((u) => ({
+    ...u,
+    application_count: countMap[u.id] || 0,
+    daily_count: dailyMap[u.id] ?? null,
+    weekly_count: weeklyMap[u.id] ?? null,
+    monthly_count: monthlyMap[u.id] ?? null,
+    group_ids: userGroupIds[u.id] || [],
+    groups: (userGroupIds[u.id] || []).map((gid) => ({ id: gid, name: groupMap[gid]?.name }))
+  })));
+});
+
+router.get('/groups', async (req, res) => {
+  const { data, error } = await supabase
+    .from('groups')
+    .select('id, name, created_at')
+    .order('name');
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('group_id, user_id');
+  const membersByGroup = {};
+  for (const m of members || []) {
+    membersByGroup[m.group_id] = membersByGroup[m.group_id] || [];
+    membersByGroup[m.group_id].push(m.user_id);
+  }
+  const userIds = [...new Set((members || []).map((m) => m.user_id))];
+  const { data: profiles } = userIds.length
+    ? await supabase.from('profiles').select('id, name').in('id', userIds)
+    : { data: [] };
+  const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+
+  res.json((data || []).map((g) => ({
+    ...g,
+    member_ids: membersByGroup[g.id] || [],
+    members: (membersByGroup[g.id] || []).map((uid) => ({ id: uid, name: profileMap[uid]?.name }))
+  })));
+});
+
+router.post('/groups', async (req, res) => {
+  const { name } = req.body;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+  const { data, error } = await supabase
+    .from('groups')
+    .insert({ name: String(name).trim() })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
+
+router.patch('/groups/:id', async (req, res) => {
+  const { name } = req.body;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ name: String(name).trim() })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+router.delete('/groups/:id', async (req, res) => {
+  const { error } = await supabase.from('groups').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(204).send();
+});
+
+router.post('/groups/:id/members', async (req, res) => {
+  const { user_id } = req.body;
+  if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+  const { error } = await supabase
+    .from('group_members')
+    .insert({ group_id: req.params.id, user_id });
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json({ group_id: req.params.id, user_id });
+});
+
+router.delete('/groups/:id/members/:userId', async (req, res) => {
+  const { error } = await supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', req.params.id)
+    .eq('user_id', req.params.userId);
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(204).send();
 });
 
 export default router;
