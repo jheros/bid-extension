@@ -59,7 +59,7 @@ export default function TeamSharing() {
       setUser(data.user);
       if (data.user) {
         const { data: p } = await supabase
-          .from("profiles")
+          .from("users")
           .select("name, role")
           .eq("id", data.user.id)
           .single();

@@ -39,7 +39,7 @@ router.get('/applications', async (req, res) => {
   // Attach profile names
   const userIds = [...new Set(applications.map((a) => a.user_id))];
   const { data: profiles } = await supabase
-    .from('profiles')
+    .from('users')
     .select('id, name')
     .in('id', userIds);
 
@@ -60,7 +60,7 @@ router.get('/applications', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   const { data: profiles, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('id, name, role, created_at')
     .order('created_at', { ascending: false });
 
@@ -160,7 +160,7 @@ router.get('/groups', async (req, res) => {
   }
   const userIds = [...new Set((members || []).map((m) => m.user_id))];
   const { data: profiles } = userIds.length
-    ? await supabase.from('profiles').select('id, name').in('id', userIds)
+    ? await supabase.from('users').select('id, name').in('id', userIds)
     : { data: [] };
   const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
 

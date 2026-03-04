@@ -11,7 +11,7 @@ export default function AdminRoute({ children }) {
       if (!session) return setState('unauthenticated')
 
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('users')
         .select('role')
         .eq('id', session.user.id)
         .single()

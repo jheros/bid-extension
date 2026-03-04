@@ -19,7 +19,7 @@ export async function requireAuth(req, res, next) {
 
 export async function requireAdmin(req, res, next) {
   const { data: profile, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('role')
     .eq('id', req.user.id)
     .single();

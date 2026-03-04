@@ -17,7 +17,7 @@ router.post('/signup', async (req, res) => {
   }
 
   const { error: profileError } = await supabase
-    .from('profiles')
+    .from('users')
     .insert({ id: data.user.id, name });
 
   if (profileError) {

@@ -116,7 +116,7 @@ router.get('/requests', async (req, res) => {
 
     const userIds = [...new Set((rows || []).flatMap((r) => [r.requester_id, r.receiver_id]))];
     const { data: profiles, error: profilesError } = userIds.length
-      ? await supabase.from('profiles').select('id, name').in('id', userIds)
+      ? await supabase.from('users').select('id, name').in('id', userIds)
       : { data: [], error: null };
     if (profilesError) return res.status(500).json({ error: profilesError.message });
 
@@ -259,7 +259,7 @@ router.get('/teammates', async (req, res) => {
     if (!allIds.length) return res.json([]);
 
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
+      .from('users')
       .select('id, name')
       .in('id', allIds);
     if (profilesError) return res.status(500).json({ error: profilesError.message });
@@ -324,7 +324,7 @@ router.get('/applications', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
 
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('users')
       .select('name')
       .eq('id', user_id)
       .single();
