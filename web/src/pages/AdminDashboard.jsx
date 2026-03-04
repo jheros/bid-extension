@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Briefcase, LogOut, ShieldCheck, Users, RefreshCw, ChevronLeft, Calendar, Eye, Plus, Search
+  Briefcase, LogOut, ShieldCheck, Users, RefreshCw, ChevronLeft, Calendar, Plus, Search
 } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
@@ -25,7 +25,6 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(true)
   const [groupFilter, setGroupFilter] = useState('')
   const [searchName, setSearchName] = useState('')
-  const [expandedGroupIds, setExpandedGroupIds] = useState(new Set())
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [groupSettingsGroup, setGroupSettingsGroup] = useState(null)
 
@@ -167,15 +166,6 @@ export default function AdminDashboard() {
   const ungroupedUsers = filteredUsers.filter((u) => !(u.group_ids || []).length)
   const showUngrouped = groupFilter === '' || groupFilter === 'ungrouped'
 
-  const toggleGroup = (groupId) => {
-    setExpandedGroupIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(groupId)) next.delete(groupId)
-      else next.add(groupId)
-      return next
-    })
-  }
-
   const handleCreateGroup = async (name, selectedUserIds = []) => {
     const created = await api.admin.createGroup(name)
     for (const userId of selectedUserIds) {
@@ -187,7 +177,6 @@ export default function AdminDashboard() {
     ])
     setUsers(usersData)
     setGroups(groupsData)
-    if (created?.id) setExpandedGroupIds((prev) => new Set([...prev, created.id]))
   }
 
   const handleApplyGroupChanges = async (groupId, { name, adds, removes }) => {
@@ -307,8 +296,6 @@ export default function AdminDashboard() {
               <UsersByGroupAccordion
                 users={filteredUsers}
                 groups={filteredGroups}
-                expandedGroupIds={expandedGroupIds}
-                onToggleGroup={toggleGroup}
                 onView={openUserApplications}
                 onOpenGroupSettings={setGroupSettingsGroup}
                 showUngrouped={showUngrouped}
