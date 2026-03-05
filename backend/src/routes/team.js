@@ -329,9 +329,16 @@ router.get('/applications', async (req, res) => {
       .eq('id', user_id)
       .single();
 
+    const profileIds = [...new Set((data || []).map((a) => a.profile_id).filter(Boolean))];
+    const { data: profileRows } = profileIds.length
+      ? await supabase.from('profiles').select('id, name').in('id', profileIds)
+      : { data: [] };
+    const profileNameMap = Object.fromEntries((profileRows || []).map((p) => [p.id, p.name]));
+
     const items = (data || []).map((row) => ({
       ...row,
       owner_name: profile?.name || null,
+      profile_name: row.profile_id ? (profileNameMap[row.profile_id] || null) : null,
       is_own: row.user_id === meId
     }));
     const total = count || 0;
