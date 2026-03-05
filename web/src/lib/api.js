@@ -35,11 +35,24 @@ export const api = {
     const qs = buildQs(params)
     return request(`/api/applications${qs ? `?${qs}` : ''}`)
   },
-  getStats: () => request('/api/applications/stats'),
+  getStats: (params = {}) => {
+    const qs = buildQs(params)
+    return request(`/api/applications/stats${qs ? `?${qs}` : ''}`)
+  },
   createApplication: (data) =>
     request('/api/applications', { method: 'POST', body: JSON.stringify(data) }),
   deleteApplication: (id) =>
     request(`/api/applications/${id}`, { method: 'DELETE' }),
+
+  profiles: {
+    getProfiles: () => request('/api/profiles'),
+    createProfile: (name) =>
+      request('/api/profiles', { method: 'POST', body: JSON.stringify({ name }) }),
+    updateProfile: (id, name) =>
+      request(`/api/profiles/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+    deleteProfile: (id) =>
+      request(`/api/profiles/${id}`, { method: 'DELETE' }),
+  },
 
   team: {
     getRequests: () => request('/api/team/requests'),

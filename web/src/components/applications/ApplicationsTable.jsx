@@ -32,6 +32,29 @@ function ResumeCell({ resume }) {
   return <span>{resume}</span>
 }
 
+const PROFILE_COLORS = [
+  'bg-cyan-900/60 text-cyan-300 border-cyan-700/50',
+  'bg-purple-900/60 text-purple-300 border-purple-700/50',
+  'bg-pink-900/60 text-pink-300 border-pink-700/50',
+  'bg-red-900/60 text-red-300 border-red-700/50',
+  'bg-yellow-900/60 text-yellow-300 border-yellow-700/50',
+  'bg-green-900/60 text-green-300 border-green-700/50',
+]
+
+function profileColor(name) {
+  const hash = [...(name || '')].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+  return PROFILE_COLORS[hash % PROFILE_COLORS.length]
+}
+
+function ProfileBadge({ profileName }) {
+  if (!profileName) return <span className="text-xs text-gray-600">—</span>
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-xs border whitespace-nowrap ${profileColor(profileName)}`}>
+      {profileName}
+    </span>
+  )
+}
+
 function TypeCell({ jobType, workType }) {
   if (!jobType && !workType) return <span className="text-xs text-gray-600">—</span>
   return (
@@ -57,6 +80,7 @@ export default function ApplicationsTable({
           <thead>
             <tr className="border-b border-gray-800 text-left">
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Profile</th>
               {showUserColumn && (
                 <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">User</th>
               )}
@@ -75,6 +99,9 @@ export default function ApplicationsTable({
               <tr key={app.id} className="hover:bg-gray-800/50 transition-colors">
                 <td className="px-4 py-3 whitespace-nowrap">
                   <DateCell appliedAt={app.applied_at} />
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <ProfileBadge profileName={app.profile_name} />
                 </td>
                 {showUserColumn && (
                   <td className="px-4 py-3 text-gray-300 text-xs whitespace-nowrap">

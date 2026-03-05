@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogOut, Briefcase, ShieldCheck, Users2 } from 'lucide-react'
+import { LogOut, Briefcase, ShieldCheck, Users2, Settings } from 'lucide-react'
 
 const ICONS = {
   briefcase: Briefcase,
@@ -13,6 +13,7 @@ export default function PageHeader({
   title,
   subtitle,
   onSignOut,
+  onSettingsClick,
   links = [],
 }) {
   const IconComponent = ICONS[icon] || Briefcase
@@ -51,6 +52,16 @@ export default function PageHeader({
               </Link>
             )
           })}
+          {onSettingsClick && (
+            <button
+              onClick={onSettingsClick}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800 cursor-pointer"
+              title="Settings"
+            >
+              <Settings size={15} />
+              Settings
+            </button>
+          )}
           <button
             onClick={onSignOut}
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-800"

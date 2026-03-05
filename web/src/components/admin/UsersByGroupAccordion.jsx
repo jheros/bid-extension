@@ -2,9 +2,19 @@ import { Eye, Settings } from 'lucide-react'
 import { RoleBadge } from '../ui/index.js'
 
 function UserRow({ user, onView }) {
+  const profileCount = (user.profiles || []).length
   return (
     <tr className="hover:bg-gray-800/50 transition-colors">
-      <td className="px-4 py-3 text-white font-medium">{user.name}</td>
+      <td className="px-4 py-3">
+        <div className="flex flex-col">
+          <span className="text-white font-medium">{user.name}</span>
+          {profileCount > 0 && (
+            <span className="text-xs text-gray-500 mt-0.5">
+              {profileCount} profile{profileCount !== 1 ? 's' : ''}: {(user.profiles || []).map((p) => p.name).join(', ')}
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-4 py-3 text-gray-300">{user.application_count}</td>
       <td className="px-4 py-3 text-gray-300">{user.daily_count ?? '—'}</td>
       <td className="px-4 py-3 text-gray-300">{user.weekly_count ?? '—'}</td>

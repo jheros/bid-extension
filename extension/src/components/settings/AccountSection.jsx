@@ -15,10 +15,11 @@ export default function AccountSection({
     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
       <h3 className="text-sm font-semibold text-gray-900 mb-3">Account</h3>
       {authEmail ? (
-        <div>
-          <p className="text-xs text-gray-600 mb-3">
+        <div className="space-y-3">
+          <p className="text-xs text-gray-600">
             Signed in as <span className="font-medium text-gray-900">{authEmail}</span>
           </p>
+
           <button
             type="button"
             onClick={onSignOut}

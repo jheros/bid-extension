@@ -9,7 +9,7 @@ router.use(requireAuth);
 router.use(requireAdmin);
 
 router.get('/applications', async (req, res) => {
-  const { search, platform, job_type, work_type, from, to, user_id } = req.query;
+  const { search, platform, job_type, work_type, from, to, user_id, profile_id } = req.query;
   const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
   const pageSize = Math.min(Math.max(Number.parseInt(req.query.page_size, 10) || 10, 1), 100);
   const fromIdx = (page - 1) * pageSize;
@@ -22,6 +22,7 @@ router.get('/applications', async (req, res) => {
     .range(fromIdx, toIdx);
 
   if (user_id) query = query.eq('user_id', user_id);
+  if (profile_id) query = query.eq('profile_id', profile_id);
   if (platform) query = query.eq('platform', platform);
   if (job_type) query = query.eq('job_type', job_type);
   if (work_type) query = query.eq('work_type', work_type);
@@ -36,16 +37,25 @@ router.get('/applications', async (req, res) => {
   const { data: applications, error, count } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
-  // Attach profile names
+  // Attach user names
   const userIds = [...new Set(applications.map((a) => a.user_id))];
-  const { data: profiles } = await supabase
-    .from('users')
-    .select('id, name')
-    .in('id', userIds);
+  const { data: userRows } = userIds.length
+    ? await supabase.from('users').select('id, name').in('id', userIds)
+    : { data: [] };
+  const userNameMap = Object.fromEntries((userRows || []).map((u) => [u.id, u.name]));
 
-  const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p.name]));
+  // Attach profile names
+  const profileIds = [...new Set(applications.map((a) => a.profile_id).filter(Boolean))];
+  const { data: profileRows } = profileIds.length
+    ? await supabase.from('profiles').select('id, name').in('id', profileIds)
+    : { data: [] };
+  const profileNameMap = Object.fromEntries((profileRows || []).map((p) => [p.id, p.name]));
 
-  const items = applications.map((a) => ({ ...a, user_name: profileMap[a.user_id] || null }));
+  const items = applications.map((a) => ({
+    ...a,
+    user_name: userNameMap[a.user_id] || null,
+    profile_name: a.profile_id ? (profileNameMap[a.profile_id] || null) : null,
+  }));
   const total = count || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -59,7 +69,7 @@ router.get('/applications', async (req, res) => {
 });
 
 router.get('/users', async (req, res) => {
-  const { data: profiles, error } = await supabase
+  const { data: userRows, error } = await supabase
     .from('users')
     .select('id, name, role, created_at')
     .order('created_at', { ascending: false });
@@ -119,7 +129,6 @@ router.get('/users', async (req, res) => {
   const { data: memberships } = await supabase
     .from('group_members')
     .select('group_id, user_id');
-  const groupsByUser = {};
   const userGroupIds = {};
   for (const m of memberships || []) {
     userGroupIds[m.user_id] = userGroupIds[m.user_id] || [];
@@ -131,14 +140,31 @@ router.get('/users', async (req, res) => {
     : { data: [] };
   const groupMap = Object.fromEntries((groups || []).map((g) => [g.id, g]));
 
-  res.json(profiles.map((u) => ({
+  // Fetch all profiles grouped by user
+  const allUserIds = userRows.map((u) => u.id);
+  const { data: allProfiles } = allUserIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id, user_id, name, created_at')
+        .in('user_id', allUserIds)
+        .order('created_at', { ascending: true })
+    : { data: [] };
+
+  const profilesByUser = {};
+  for (const p of allProfiles || []) {
+    profilesByUser[p.user_id] = profilesByUser[p.user_id] || [];
+    profilesByUser[p.user_id].push({ id: p.id, name: p.name, created_at: p.created_at });
+  }
+
+  res.json(userRows.map((u) => ({
     ...u,
     application_count: countMap[u.id] || 0,
     daily_count: dailyMap[u.id] ?? null,
     weekly_count: weeklyMap[u.id] ?? null,
     monthly_count: monthlyMap[u.id] ?? null,
     group_ids: userGroupIds[u.id] || [],
-    groups: (userGroupIds[u.id] || []).map((gid) => ({ id: gid, name: groupMap[gid]?.name }))
+    groups: (userGroupIds[u.id] || []).map((gid) => ({ id: gid, name: groupMap[gid]?.name })),
+    profiles: profilesByUser[u.id] || [],
   })));
 });
 

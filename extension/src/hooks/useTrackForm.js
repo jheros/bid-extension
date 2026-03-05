@@ -30,7 +30,7 @@ export function useTrackForm(showStatus, clearAfterSave) {
   }, []);
 
   const handleSubmit = useCallback(
-    (e) => {
+    async (e) => {
       e.preventDefault();
       const { jobTitle, company, location, workType, jobType, salary, securityClearance, resume, url, datetime } = form;
 
@@ -40,6 +40,9 @@ export function useTrackForm(showStatus, clearAfterSave) {
       }
 
       showStatus("Saving...", "info");
+
+      // Read selected profile from storage
+      const { selectedProfileId } = await chrome.storage.local.get("selectedProfileId");
 
       const data = {
         jobTitle,
@@ -52,6 +55,7 @@ export function useTrackForm(showStatus, clearAfterSave) {
         resume,
         url,
         datetime: formatDateTime(datetime),
+        profileId: selectedProfileId || null,
       };
 
       chrome.runtime.sendMessage({ type: "SAVE_APPLICATION", data }, (response) => {

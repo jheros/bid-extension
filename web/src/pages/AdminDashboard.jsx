@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate()
   const [view, setView] = useState('users')
   const [selectedUser, setSelectedUser] = useState(null)
+  const [selectedProfileId, setSelectedProfileId] = useState('')
 
   const [users, setUsers] = useState([])
   const [groups, setGroups] = useState([])
@@ -78,6 +79,7 @@ export default function AdminDashboard() {
     setAppsLoading(true)
     setError('')
     try {
+      const profileParam = selectedProfileId ? { profile_id: selectedProfileId } : {}
       const params = isCalendar
         ? (() => {
             const { from, to } = getBangkokDayRange(calendarDate)
@@ -86,7 +88,8 @@ export default function AdminDashboard() {
               from,
               to,
               page: currentPage,
-              page_size: pageSize
+              page_size: pageSize,
+              ...profileParam
             }
           })()
         : {
@@ -96,7 +99,8 @@ export default function AdminDashboard() {
             job_type: filterJobType || undefined,
             work_type: filterWorkType || undefined,
             page: currentPage,
-            page_size: pageSize
+            page_size: pageSize,
+            ...profileParam
           }
       const data = await api.admin.getApplications(params)
       setApplications(data.items || [])
@@ -107,7 +111,7 @@ export default function AdminDashboard() {
     } finally {
       setAppsLoading(false)
     }
-  }, [appsViewMode, calendarDate, calendarUserId, selectedUser, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
+  }, [appsViewMode, calendarDate, calendarUserId, selectedUser, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize, selectedProfileId])
 
   useEffect(() => {
     fetchUsersAndGroups()
@@ -125,6 +129,7 @@ export default function AdminDashboard() {
 
   const openUserApplications = (user) => {
     setSelectedUser(user)
+    setSelectedProfileId('')
     setCalendarUserId(user.id)
     setSearch('')
     setFilterPlatform('')
@@ -135,6 +140,7 @@ export default function AdminDashboard() {
 
   const backToUsers = () => {
     setSelectedUser(null)
+    setSelectedProfileId('')
     setCurrentPage(1)
     setView('users')
   }
@@ -191,6 +197,10 @@ export default function AdminDashboard() {
     }
     await fetchUsersAndGroups()
   }
+
+  const selectedUserProfiles = selectedUser
+    ? (users.find((u) => u.id === selectedUser.id)?.profiles || [])
+    : []
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -337,6 +347,36 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
+
+            {/* Profile filter for selected user */}
+            {selectedUser && selectedUserProfiles.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">Profile:</span>
+                <button
+                  onClick={() => { setSelectedProfileId(''); resetPage() }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    selectedProfileId === ''
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
+                >
+                  All
+                </button>
+                {selectedUserProfiles.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setSelectedProfileId(p.id); resetPage() }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      selectedProfileId === p.id
+                        ? 'bg-gray-700 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {appsViewMode === 'calendar' && (
               <div className="flex flex-wrap items-center gap-3 mb-4">

@@ -1,17 +1,20 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Briefcase, ShieldCheck, Users2, RefreshCw } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
 import { getTodayBangkok, getBangkokDayRange } from '../lib/dateUtils.js'
 import { PageHeader } from '../components/layout/index.js'
-import { StatCard, LoadingSpinner, Alert, EmptyState } from '../components/ui/index.js'
+import { StatCard, LoadingSpinner, Alert, EmptyState, UserSettingsModal } from '../components/ui/index.js'
 import { ApplicationFilters, ApplicationsTable, Pagination, ViewModeToggle } from '../components/applications/index.js'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [profiles, setProfiles] = useState([])
+  const [selectedProfileId, setSelectedProfileId] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
   const [applications, setApplications] = useState([])
   const [totalItems, setTotalItems] = useState(0)
   const [stats, setStats] = useState(null)
@@ -38,6 +41,15 @@ export default function Dashboard() {
     setPageInputVal(String(currentPageSafe))
   }, [currentPageSafe])
 
+  const fetchProfiles = useCallback(async () => {
+    try {
+      const data = await api.profiles.getProfiles()
+      setProfiles(data)
+    } catch {
+      // non-critical
+    }
+  }, [])
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setUser(data.user)
@@ -50,29 +62,32 @@ export default function Dashboard() {
         setProfile(p)
       }
     })
-  }, [])
+    fetchProfiles()
+  }, [fetchProfiles])
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true)
     try {
-      const data = await api.getStats()
+      const params = selectedProfileId ? { profile_id: selectedProfileId } : {}
+      const data = await api.getStats(params)
       setStats(data)
     } catch {
       // non-critical
     } finally {
       setStatsLoading(false)
     }
-  }, [])
+  }, [selectedProfileId])
 
   const fetchApplications = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const isCalendar = viewMode === 'calendar'
+      const profileParam = selectedProfileId ? { profile_id: selectedProfileId } : {}
       const params = isCalendar
         ? (() => {
             const { from, to } = getBangkokDayRange(calendarDate)
-            return { from, to, page: currentPage, page_size: pageSize }
+            return { from, to, page: currentPage, page_size: pageSize, ...profileParam }
           })()
         : {
             search: search || undefined,
@@ -80,7 +95,8 @@ export default function Dashboard() {
             job_type: filterJobType || undefined,
             work_type: filterWorkType || undefined,
             page: currentPage,
-            page_size: pageSize
+            page_size: pageSize,
+            ...profileParam
           }
       const data = await api.getApplications(params)
       setApplications(data.items || [])
@@ -91,7 +107,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [viewMode, calendarDate, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize])
+  }, [viewMode, calendarDate, search, filterPlatform, filterJobType, filterWorkType, currentPage, pageSize, selectedProfileId])
 
   useEffect(() => {
     fetchApplications()
@@ -127,10 +143,17 @@ export default function Dashboard() {
 
   const resetPage = () => setCurrentPage(1)
 
+  const handleProfileChange = (id) => {
+    setSelectedProfileId(id)
+    resetPage()
+  }
+
   const links = [
     { to: '/team', label: 'Team', icon: Users2 },
     ...(profile?.role === 'admin' ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck, highlight: true }] : []),
   ]
+
+  const selectedProfileName = profiles.find((p) => p.id === selectedProfileId)?.name
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -139,14 +162,61 @@ export default function Dashboard() {
         title="Job Tracker"
         subtitle={profile?.name ? `${profile.name} · ${user?.email}` : user?.email}
         onSignOut={handleSignOut}
+        onSettingsClick={() => setShowSettings(true)}
         links={links}
       />
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Profile selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">Profile:</span>
+          <button
+            onClick={() => handleProfileChange('')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              selectedProfileId === ''
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            All
+          </button>
+          {profiles.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => handleProfileChange(p.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                selectedProfileId === p.id
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+
+        {showSettings && (
+          <UserSettingsModal
+            user={user}
+            profile={profile}
+            profiles={profiles}
+            onClose={() => setShowSettings(false)}
+            onProfilesChange={(updated) => {
+              setProfiles(updated)
+              if (selectedProfileId && !updated.find((p) => p.id === selectedProfileId)) {
+                setSelectedProfileId('')
+              }
+            }}
+            onUserNameChange={(updated) => setProfile((p) => (p ? { ...p, ...updated } : updated))}
+          />
+        )}
+
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-              Applications (08:00 GMT+7 cutoff)
+              {selectedProfileName
+                ? `${selectedProfileName} · Applications (08:00 GMT+7 cutoff)`
+                : 'Applications (08:00 GMT+7 cutoff)'}
             </h2>
             <div className="flex items-center gap-3">
               <ViewModeToggle

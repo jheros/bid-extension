@@ -81,6 +81,10 @@ export default function App() {
                 authStatus={auth.authStatus}
                 onSignIn={auth.handleSignIn}
                 onSignOut={auth.handleSignOut}
+                profiles={auth.profiles}
+                selectedProfileId={auth.selectedProfileId}
+                onSelectProfile={auth.handleSelectProfile}
+                onRefreshProfiles={auth.refreshProfiles}
                 backendUrl={settings.backendUrl}
                 setBackendUrl={settings.setBackendUrl}
                 useAiExtractor={settings.useAiExtractor}

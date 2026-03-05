@@ -7,7 +7,7 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', async (req, res) => {
-  const { search, platform, job_type, work_type, from, to } = req.query;
+  const { search, platform, job_type, work_type, from, to, profile_id } = req.query;
   const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
   const pageSize = Math.min(Math.max(Number.parseInt(req.query.page_size, 10) || 10, 1), 100);
   const fromIdx = (page - 1) * pageSize;
@@ -20,6 +20,7 @@ router.get('/', async (req, res) => {
     .order('applied_at', { ascending: false })
     .range(fromIdx, toIdx);
 
+  if (profile_id) query = query.eq('profile_id', profile_id);
   if (search) {
     query = query.or(
       `job_title.ilike.%${search}%,company.ilike.%${search}%,location.ilike.%${search}%`
@@ -33,10 +34,23 @@ router.get('/', async (req, res) => {
 
   const { data, error, count } = await query;
   if (error) return res.status(500).json({ error: error.message });
+
+  // Attach profile names
+  const profileIds = [...new Set((data || []).map((a) => a.profile_id).filter(Boolean))];
+  const { data: profileRows } = profileIds.length
+    ? await supabase.from('profiles').select('id, name').in('id', profileIds)
+    : { data: [] };
+  const profileNameMap = Object.fromEntries((profileRows || []).map((p) => [p.id, p.name]));
+
+  const items = (data || []).map((a) => ({
+    ...a,
+    profile_name: a.profile_id ? (profileNameMap[a.profile_id] || null) : null,
+  }));
+
   const total = count || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   res.json({
-    items: data || [],
+    items,
     total,
     page,
     page_size: pageSize,
@@ -45,6 +59,7 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/stats', async (req, res) => {
+  const { profile_id } = req.query;
   const now = new Date();
 
   // Bangkok timezone cutoff: 08:00 UTC+7 = 01:00 UTC
@@ -62,13 +77,15 @@ router.get('/stats', async (req, res) => {
 
   let data;
   try {
-    data = await fetchAllBatched(({ from, to }) =>
-      supabase
+    data = await fetchAllBatched(({ from, to }) => {
+      let q = supabase
         .from('job_applications')
         .select('applied_at, platform')
         .eq('user_id', req.user.id)
-        .range(from, to)
-    );
+        .range(from, to);
+      if (profile_id) q = q.eq('profile_id', profile_id);
+      return q;
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -97,22 +114,40 @@ router.get('/stats', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     job_title, company, location, work_type, job_type,
-    salary, security_clearance, resume, url, platform, applied_at
+    salary, security_clearance, resume, url, platform, applied_at, profile_id
   } = req.body;
 
   if (!job_title || !company || !url) {
     return res.status(400).json({ error: 'job_title, company, and url are required' });
   }
 
-  // Duplicate check
-  const { data: existing } = await supabase
+  // Validate profile ownership if provided
+  if (profile_id) {
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', profile_id)
+      .eq('user_id', req.user.id)
+      .single();
+    if (!profileRow) {
+      return res.status(400).json({ error: 'Invalid profile_id' });
+    }
+  }
+
+  // Duplicate check:
+  // - Saving with profile A → blocked if (profile=A) OR (profile=null) already exists.
+  // - Saving with no profile → blocked if ANY row (any profile or none) already exists.
+  let dupQuery = supabase
     .from('job_applications')
     .select('id')
     .eq('user_id', req.user.id)
     .eq('url', url)
     .eq('job_title', job_title)
-    .eq('company', company)
-    .limit(1);
+    .eq('company', company);
+  if (profile_id) {
+    dupQuery = dupQuery.or(`profile_id.eq.${profile_id},profile_id.is.null`);
+  }
+  const { data: existing } = await dupQuery.limit(1);
 
   if (existing?.length > 0) {
     return res.status(409).json({ error: 'DUPLICATE_APPLICATION' });
@@ -131,7 +166,8 @@ router.post('/', async (req, res) => {
       resume: resume || null,
       url,
       platform: platform || 'other',
-      applied_at: applied_at || new Date().toISOString()
+      applied_at: applied_at || new Date().toISOString(),
+      profile_id: profile_id || null
     })
     .select()
     .single();

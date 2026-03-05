@@ -1,5 +1,6 @@
 import SetupGuide from "./SetupGuide";
 import AccountSection from "./AccountSection";
+import ProfileSection from "./ProfileSection";
 import SettingsForm from "./SettingsForm";
 
 export default function SettingsTab({
@@ -13,6 +14,10 @@ export default function SettingsTab({
   authStatus,
   onSignIn,
   onSignOut,
+  profiles,
+  selectedProfileId,
+  onSelectProfile,
+  onRefreshProfiles,
   // Settings form
   backendUrl,
   setBackendUrl,
@@ -40,6 +45,14 @@ export default function SettingsTab({
         onSignIn={onSignIn}
         onSignOut={onSignOut}
       />
+      {authEmail && (
+        <ProfileSection
+          profiles={profiles}
+          selectedProfileId={selectedProfileId}
+          onSelectProfile={onSelectProfile}
+          onRefreshProfiles={onRefreshProfiles}
+        />
+      )}
       <SettingsForm
         backendUrl={backendUrl}
         setBackendUrl={setBackendUrl}

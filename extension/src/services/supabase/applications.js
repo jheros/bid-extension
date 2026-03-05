@@ -22,6 +22,7 @@ function buildPayload(data) {
     url: data.url,
     platform,
     applied_at,
+    profile_id: data.profileId || null,
   };
 }
 
@@ -34,6 +35,22 @@ export async function saveToSupabase(data) {
   const { data: { user } } = await client.auth.getUser();
   if (!user?.id) throw new Error('Session invalid. Please sign in again.');
   payload.user_id = user.id;
+
+  // Duplicate check:
+  // - Saving with profile A → blocked if (profile=A) OR (profile=null) already exists.
+  // - Saving with no profile → blocked if ANY row (any profile or none) already exists.
+  let dupQuery = client
+    .from(TABLE)
+    .select('id', { head: true, count: 'exact' })
+    .eq('user_id', user.id)
+    .eq('url', payload.url)
+    .eq('job_title', payload.job_title)
+    .eq('company', payload.company);
+  if (payload.profile_id) {
+    dupQuery = dupQuery.or(`profile_id.eq.${payload.profile_id},profile_id.is.null`);
+  }
+  const { count: dupCount } = await dupQuery;
+  if (dupCount > 0) throw new Error('DUPLICATE_APPLICATION');
 
   let result = await client.from(TABLE).insert(payload).select().single();
 

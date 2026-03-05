@@ -16,6 +16,7 @@ function buildPayload(data) {
     url: data.url,
     platform,
     applied_at,
+    profile_id: data.profileId || null,
   };
 }
 
