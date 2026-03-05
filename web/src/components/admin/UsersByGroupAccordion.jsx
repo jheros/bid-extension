@@ -1,21 +1,21 @@
 import { Eye, Settings } from 'lucide-react'
 import { RoleBadge } from '../ui/index.js'
 
-const USER_COLORS = [
-  'text-cyan-400',
-  'text-purple-400',
-  'text-pink-400',
-  'text-amber-400',
-  'text-green-400',
-  'text-blue-400',
-  'text-rose-400',
-  'text-emerald-400',
+const USER_BADGE_COLORS = [
+  'bg-cyan-900/60 text-cyan-300 border-cyan-700/50',
+  'bg-purple-900/60 text-purple-300 border-purple-700/50',
+  'bg-pink-900/60 text-pink-300 border-pink-700/50',
+  'bg-amber-900/60 text-amber-300 border-amber-700/50',
+  'bg-green-900/60 text-green-300 border-green-700/50',
+  'bg-blue-900/60 text-blue-300 border-blue-700/50',
+  'bg-rose-900/60 text-rose-300 border-rose-700/50',
+  'bg-emerald-900/60 text-emerald-300 border-emerald-700/50',
 ]
 
-function userColor(userId) {
-  if (!userId) return 'text-gray-400'
+function userBadgeColor(userId) {
+  if (!userId) return 'bg-gray-800/60 text-gray-400 border-gray-600/50'
   const hash = [...userId].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
-  return USER_COLORS[hash % USER_COLORS.length]
+  return USER_BADGE_COLORS[hash % USER_BADGE_COLORS.length]
 }
 
 function UserProfileRow({ user, profile, isTotal, onView }) {
@@ -29,9 +29,13 @@ function UserProfileRow({ user, profile, isTotal, onView }) {
         {isTotal ? <span className="text-white font-medium">{user.name}</span> : <span className="text-gray-600">—</span>}
       </td>
       <td className="px-4 py-3">
-        <span className={`${isTotal ? 'font-medium text-gray-200' : userColor(user?.id)}`}>
-          {profile?.name ?? 'Total'}
-        </span>
+        {isTotal ? (
+          <span className="font-medium text-gray-200">{profile?.name ?? 'Total'}</span>
+        ) : (
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${userBadgeColor(user?.id)}`}>
+            {profile?.name ?? 'Total'}
+          </span>
+        )}
       </td>
       <td className="px-4 py-3 text-gray-300">{appCount}</td>
       <td className="px-4 py-3 text-gray-300">{dailyCount}</td>

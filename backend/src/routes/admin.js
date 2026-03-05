@@ -189,7 +189,7 @@ router.get('/users', async (req, res) => {
     if (noProfileCount > 0) {
       profilesWithCounts.push({
         id: null,
-        name: '(no profile)',
+        name: 'Global',
         created_at: null,
         application_count: noProfileCount,
         daily_count: profileDailyMap[`${u.id}:null`] ?? null,
