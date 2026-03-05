@@ -127,9 +127,17 @@ export default function AdminDashboard() {
     }
   }, [view, appsViewMode, selectedUser, calendarUserId])
 
-  const openUserApplications = (user) => {
+  useEffect(() => {
+    if (appsViewMode === 'calendar' && calendarUserId) {
+      const profiles = users.find((u) => u.id === calendarUserId)?.profiles || []
+      const hasSelectedProfile = selectedProfileId && profiles.some((p) => p.id === selectedProfileId)
+      if (!hasSelectedProfile) setSelectedProfileId('')
+    }
+  }, [appsViewMode, calendarUserId, users, selectedProfileId])
+
+  const openUserApplications = (user, profileId = '') => {
     setSelectedUser(user)
-    setSelectedProfileId('')
+    setSelectedProfileId(profileId || '')
     setCalendarUserId(user.id)
     setSearch('')
     setFilterPlatform('')
@@ -198,8 +206,9 @@ export default function AdminDashboard() {
     await fetchUsersAndGroups()
   }
 
-  const selectedUserProfiles = selectedUser
-    ? (users.find((u) => u.id === selectedUser.id)?.profiles || [])
+  const profileFilterUserId = appsViewMode === 'calendar' ? calendarUserId : selectedUser?.id
+  const selectedUserProfiles = profileFilterUserId
+    ? (users.find((u) => u.id === profileFilterUserId)?.profiles || [])
     : []
 
   return (
@@ -215,7 +224,7 @@ export default function AdminDashboard() {
         ]}
       />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-6">
         {error && (
           <div className="mb-4">
             <Alert>{error}</Alert>
@@ -348,8 +357,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Profile filter for selected user */}
-            {selectedUser && selectedUserProfiles.length > 0 && (
+            {/* Profile filter for selected user / calendar user */}
+            {profileFilterUserId && selectedUserProfiles.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">Profile:</span>
                 <button

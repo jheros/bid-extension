@@ -79,20 +79,27 @@ router.get('/users', async (req, res) => {
   let counts;
   try {
     counts = await fetchAllBatched(({ from, to }) =>
-      supabase.from('job_applications').select('user_id').range(from, to)
+      supabase.from('job_applications').select('user_id, profile_id').range(from, to)
     );
   } catch {
     counts = [];
   }
 
   const countMap = {};
+  const profileCountMap = {};
   for (const row of counts) {
     countMap[row.user_id] = (countMap[row.user_id] || 0) + 1;
+    const pid = row.profile_id || 'null';
+    const key = `${row.user_id}:${pid}`;
+    profileCountMap[key] = (profileCountMap[key] || 0) + 1;
   }
 
   let dailyMap = {};
   let weeklyMap = {};
   let monthlyMap = {};
+  let profileDailyMap = {};
+  let profileWeeklyMap = {};
+  let profileMonthlyMap = {};
   const dateStr = req.query.date;
   if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const dayRange = getBangkokDayRange(dateStr);
@@ -103,7 +110,7 @@ router.get('/users', async (req, res) => {
       appsInRange = await fetchAllBatched(({ from, to }) =>
         supabase
           .from('job_applications')
-          .select('user_id, applied_at')
+          .select('user_id, profile_id, applied_at')
           .gte('applied_at', monthRange.from)
           .lte('applied_at', monthRange.to)
           .range(from, to)
@@ -119,10 +126,20 @@ router.get('/users', async (req, res) => {
     const monthTo = new Date(monthRange.to).getTime();
     for (const row of appsInRange) {
       const uid = row.user_id;
+      const pid = row.profile_id || 'null';
       const ts = new Date(row.applied_at).getTime();
-      if (ts >= dayFrom && ts <= dayTo) dailyMap[uid] = (dailyMap[uid] || 0) + 1;
-      if (ts >= weekFrom && ts <= weekTo) weeklyMap[uid] = (weeklyMap[uid] || 0) + 1;
-      if (ts >= monthFrom && ts <= monthTo) monthlyMap[uid] = (monthlyMap[uid] || 0) + 1;
+      if (ts >= dayFrom && ts <= dayTo) {
+        dailyMap[uid] = (dailyMap[uid] || 0) + 1;
+        profileDailyMap[`${uid}:${pid}`] = (profileDailyMap[`${uid}:${pid}`] || 0) + 1;
+      }
+      if (ts >= weekFrom && ts <= weekTo) {
+        weeklyMap[uid] = (weeklyMap[uid] || 0) + 1;
+        profileWeeklyMap[`${uid}:${pid}`] = (profileWeeklyMap[`${uid}:${pid}`] || 0) + 1;
+      }
+      if (ts >= monthFrom && ts <= monthTo) {
+        monthlyMap[uid] = (monthlyMap[uid] || 0) + 1;
+        profileMonthlyMap[`${uid}:${pid}`] = (profileMonthlyMap[`${uid}:${pid}`] || 0) + 1;
+      }
     }
   }
 
@@ -153,19 +170,44 @@ router.get('/users', async (req, res) => {
   const profilesByUser = {};
   for (const p of allProfiles || []) {
     profilesByUser[p.user_id] = profilesByUser[p.user_id] || [];
-    profilesByUser[p.user_id].push({ id: p.id, name: p.name, created_at: p.created_at });
+    const appCount = profileCountMap[`${p.user_id}:${p.id}`] || 0;
+    const dayKey = `${p.user_id}:${p.id}`;
+    profilesByUser[p.user_id].push({
+      id: p.id,
+      name: p.name,
+      created_at: p.created_at,
+      application_count: appCount,
+      daily_count: profileDailyMap[dayKey] ?? null,
+      weekly_count: profileWeeklyMap[dayKey] ?? null,
+      monthly_count: profileMonthlyMap[dayKey] ?? null,
+    });
   }
 
-  res.json(userRows.map((u) => ({
-    ...u,
-    application_count: countMap[u.id] || 0,
-    daily_count: dailyMap[u.id] ?? null,
-    weekly_count: weeklyMap[u.id] ?? null,
-    monthly_count: monthlyMap[u.id] ?? null,
-    group_ids: userGroupIds[u.id] || [],
-    groups: (userGroupIds[u.id] || []).map((gid) => ({ id: gid, name: groupMap[gid]?.name })),
-    profiles: profilesByUser[u.id] || [],
-  })));
+  res.json(userRows.map((u) => {
+    const profilesWithCounts = profilesByUser[u.id] || [];
+    const noProfileCount = profileCountMap[`${u.id}:null`] || 0;
+    if (noProfileCount > 0) {
+      profilesWithCounts.push({
+        id: null,
+        name: '(no profile)',
+        created_at: null,
+        application_count: noProfileCount,
+        daily_count: profileDailyMap[`${u.id}:null`] ?? null,
+        weekly_count: profileWeeklyMap[`${u.id}:null`] ?? null,
+        monthly_count: profileMonthlyMap[`${u.id}:null`] ?? null,
+      });
+    }
+    return {
+      ...u,
+      application_count: countMap[u.id] || 0,
+      daily_count: dailyMap[u.id] ?? null,
+      weekly_count: weeklyMap[u.id] ?? null,
+      monthly_count: monthlyMap[u.id] ?? null,
+      group_ids: userGroupIds[u.id] || [],
+      groups: (userGroupIds[u.id] || []).map((gid) => ({ id: gid, name: groupMap[gid]?.name })),
+      profiles: profilesWithCounts,
+    };
+  }));
 });
 
 router.get('/groups', async (req, res) => {

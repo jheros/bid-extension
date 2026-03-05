@@ -230,7 +230,7 @@ export default function TeamSharing() {
         links={links}
       />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-6">
         {error && (
           <div className="mb-4">
             <Alert>{error}</Alert>

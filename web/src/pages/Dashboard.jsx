@@ -166,7 +166,7 @@ export default function Dashboard() {
         links={links}
       />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-8">
         {/* Profile selector */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">Profile:</span>

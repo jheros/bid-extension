@@ -84,7 +84,7 @@ export default function ApplicationsTable({
               {showUserColumn && (
                 <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">User</th>
               )}
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide min-w-[280px]">Job</th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide min-w-[320px]">Job</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Company</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Location</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
@@ -108,7 +108,7 @@ export default function ApplicationsTable({
                     {app.user_name || '—'}
                   </td>
                 )}
-                <td className="px-4 py-3 min-w-[280px] max-w-[400px]">
+                <td className="px-4 py-3 min-w-[320px] max-w-[520px]">
                   <a
                     href={app.url}
                     target="_blank"
@@ -120,14 +120,14 @@ export default function ApplicationsTable({
                   </a>
                 </td>
                 <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{app.company}</td>
-                <td className="px-4 py-3 text-gray-400 text-xs max-w-[160px] truncate">{app.location || '—'}</td>
+                <td className="px-4 py-3 text-gray-400 text-xs max-w-[200px] truncate">{app.location || '—'}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <TypeCell jobType={app.job_type} workType={app.work_type} />
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                   {app.salary || '—'}
                 </td>
-                <td className="px-4 py-3 text-gray-400 text-xs max-w-[140px] truncate">
+                <td className="px-4 py-3 text-gray-400 text-xs max-w-[180px] truncate">
                   <ResumeCell resume={app.resume} />
                 </td>
                 <td className="px-4 py-3">
