@@ -26,7 +26,7 @@ function UserProfileRow({ user, profile, isTotal, onView }) {
   return (
     <tr className="hover:bg-gray-800/50 transition-colors">
       <td className="px-4 py-3">
-        {isTotal ? <span className="text-white font-medium">{user.name}</span> : <span className="text-gray-600">—</span>}
+        {isTotal ? <span className="text-white font-medium">{user.name}</span> : ''}
       </td>
       <td className="px-4 py-3">
         {isTotal ? (
@@ -44,9 +44,9 @@ function UserProfileRow({ user, profile, isTotal, onView }) {
       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
         {((isTotal ? user.created_at : profile?.created_at) ?? null)
           ? new Date(isTotal ? user.created_at : profile.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-          : '—'}
+          : (isTotal ? '—' : '')}
       </td>
-      <td className="px-4 py-3">{isTotal ? <RoleBadge role={user.role} /> : <span className="text-gray-600">—</span>}</td>
+      <td className="px-4 py-3">{isTotal ? <RoleBadge role={user.role} /> : ''}</td>
       <td className="px-4 py-3">
         <button
           onClick={() => onView(user, profile?.id)}
@@ -73,14 +73,20 @@ function UserRows({ user, onView }) {
   )
 }
 
-function GroupRow({ title, count, onOpenGroupSettings, group }) {
+function GroupRow({ title, count, applicationCount, dailyCount, weeklyCount, monthlyCount, onOpenGroupSettings, group }) {
+  const day = dailyCount ?? 0
+  const week = weeklyCount ?? 0
+  const month = monthlyCount ?? 0
   return (
     <tr className="bg-gray-800/35 border-t border-gray-700">
       <td colSpan={9} className="px-4 py-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-medium text-white">{title}</span>
-            <span className="text-xs text-gray-500">({count} users)</span>
+            <span className="text-xs text-gray-500">
+              ({count} users · {applicationCount ?? 0} applications
+              <span className="text-gray-600"> · day: {day} · week: {week} · month: {month}</span>)
+            </span>
           </div>
           {group && (
             <button
@@ -106,11 +112,17 @@ export default function UsersByGroupAccordion({
 }) {
   const userById = Object.fromEntries(users.map((u) => [u.id, u]))
   const ungrouped = users.filter((u) => !(u.group_ids || []).length)
-  const groupSections = groups.map((group) => ({
-    group,
-    title: group.name,
-    members: (group.member_ids || []).map((id) => userById[id]).filter(Boolean),
-  }))
+  const sumCounts = (members) => ({
+    applicationCount: members.reduce((s, u) => s + (u.application_count ?? 0), 0),
+    dailyCount: members.reduce((s, u) => s + (u.daily_count ?? 0), 0),
+    weeklyCount: members.reduce((s, u) => s + (u.weekly_count ?? 0), 0),
+    monthlyCount: members.reduce((s, u) => s + (u.monthly_count ?? 0), 0),
+  })
+  const groupSections = groups.map((group) => {
+    const members = (group.member_ids || []).map((id) => userById[id]).filter(Boolean)
+    return { group, title: group.name, members, ...sumCounts(members) }
+  })
+  const ungroupedCounts = sumCounts(ungrouped)
 
   return (
     <div className="border border-gray-800 rounded-lg overflow-hidden">
@@ -130,11 +142,15 @@ export default function UsersByGroupAccordion({
             </tr>
           </thead>
           <tbody>
-            {groupSections.map(({ group, title, members }) => ([
+            {groupSections.map(({ group, title, members, applicationCount, dailyCount, weeklyCount, monthlyCount }) => ([
               <GroupRow
                 key={`group-${group.id}`}
                 title={title}
                 count={members.length}
+                applicationCount={applicationCount}
+                dailyCount={dailyCount}
+                weeklyCount={weeklyCount}
+                monthlyCount={monthlyCount}
                 group={group}
                 onOpenGroupSettings={onOpenGroupSettings}
               />,
@@ -156,6 +172,10 @@ export default function UsersByGroupAccordion({
                   key="ungrouped-header"
                   title="Ungrouped"
                   count={ungrouped.length}
+                  applicationCount={ungroupedCounts.applicationCount}
+                  dailyCount={ungroupedCounts.dailyCount}
+                  weeklyCount={ungroupedCounts.weeklyCount}
+                  monthlyCount={ungroupedCounts.monthlyCount}
                   onOpenGroupSettings={onOpenGroupSettings}
                 />
                 {ungrouped.map((u) => (
