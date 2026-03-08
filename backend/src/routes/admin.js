@@ -79,7 +79,11 @@ router.get('/users', async (req, res) => {
   let counts;
   try {
     counts = await fetchAllBatched(({ from, to }) =>
-      supabase.from('job_applications').select('user_id, profile_id').range(from, to)
+      supabase
+        .from('job_applications')
+        .select('user_id, profile_id')
+        .order('id', { ascending: true })
+        .range(from, to)
     );
   } catch {
     counts = [];
@@ -105,14 +109,18 @@ router.get('/users', async (req, res) => {
     const dayRange = getBangkokDayRange(dateStr);
     const weekRange = getBangkokWeekRange(dateStr);
     const monthRange = getBangkokMonthRange(dateStr);
+    // Fetch range must cover full week (can span two months) for accurate weekly counts
+    const fetchFrom = weekRange.from < monthRange.from ? weekRange.from : monthRange.from;
+    const fetchTo = weekRange.to > monthRange.to ? weekRange.to : monthRange.to;
     let appsInRange;
     try {
       appsInRange = await fetchAllBatched(({ from, to }) =>
         supabase
           .from('job_applications')
           .select('user_id, profile_id, applied_at')
-          .gte('applied_at', monthRange.from)
-          .lte('applied_at', monthRange.to)
+          .gte('applied_at', fetchFrom)
+          .lte('applied_at', fetchTo)
+          .order('id', { ascending: true })
           .range(from, to)
       );
     } catch {
