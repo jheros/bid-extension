@@ -16,13 +16,13 @@ export default function App() {
 
   const showStatus = useCallback((text, type = "info") => {
     setStatusMessage({ text, type });
-    setTimeout(() => setStatusMessage({ text: "", type: "" }), 5000);
+    // setTimeout(() => setStatusMessage({ text: "", type: "" }), 5000);
   }, []);
 
   const settings = useSettings();
   const { saveSettings } = settings;
   const auth = useAuth();
-  const { form, setFormField, setFormFields, handleSubmit } = useTrackForm(
+  const { form, setFormField, setFormFields, handleSubmit, resumeFile, setResumeFile } = useTrackForm(
     showStatus,
     settings.clearAfterSave,
   );
@@ -67,7 +67,13 @@ export default function App() {
             <StatusMessage text={statusMessage.text} type={statusMessage.type} />
 
             {activeTab === "track" && (
-              <TrackForm form={form} setFormField={setFormField} handleSubmit={handleSubmit} />
+              <TrackForm
+                form={form}
+                setFormField={setFormField}
+                handleSubmit={handleSubmit}
+                resumeFile={resumeFile}
+                setResumeFile={setResumeFile}
+              />
             )}
 
             {activeTab === "settings" && (

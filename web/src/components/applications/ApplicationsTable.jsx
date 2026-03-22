@@ -1,5 +1,7 @@
-import { ExternalLink, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { ExternalLink, Trash2, Download } from 'lucide-react'
 import PlatformBadge from '../ui/PlatformBadge.jsx'
+import { api } from '../../lib/api.js'
 
 const BANGKOK = { timeZone: 'Asia/Bangkok' }
 
@@ -15,8 +17,42 @@ function DateCell({ appliedAt }) {
   )
 }
 
-function ResumeCell({ resume }) {
+const STORAGE_RESUME_PREFIX = 'storage:'
+
+function ResumeCell({ resume, applicationId }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
   if (!resume) return <span>—</span>
+
+  if (resume.startsWith(STORAGE_RESUME_PREFIX)) {
+    return (
+      <div className="flex flex-col gap-1 max-w-[200px]">
+        <button
+          type="button"
+          disabled={busy || !applicationId}
+          onClick={async () => {
+            setError(null)
+            setBusy(true)
+            try {
+              const { url } = await api.getResumeDownloadUrl(applicationId)
+              if (url) window.open(url, '_blank', 'noopener,noreferrer')
+            } catch (e) {
+              setError(e.message || 'Download failed')
+            } finally {
+              setBusy(false)
+            }
+          }}
+          className="inline-flex items-center gap-1.5 text-xs text-amber-400/90 hover:text-amber-300 disabled:opacity-40"
+        >
+          <Download size={12} className="shrink-0" />
+          {busy ? 'Opening…' : 'Download resume'}
+        </button>
+        {error && <span className="text-red-400 text-[10px]">{error}</span>}
+      </div>
+    )
+  }
+
   if (/^https?:\/\//i.test(resume)) {
     return (
       <a
@@ -29,7 +65,7 @@ function ResumeCell({ resume }) {
       </a>
     )
   }
-  return <span>{resume}</span>
+  return <span className="truncate">{resume}</span>
 }
 
 const PROFILE_COLORS = [
@@ -128,7 +164,7 @@ export default function ApplicationsTable({
                   {app.salary || '—'}
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs max-w-[180px] truncate">
-                  <ResumeCell resume={app.resume} />
+                  <ResumeCell resume={app.resume} applicationId={app.id} />
                 </td>
                 <td className="px-4 py-3">
                   <PlatformBadge platform={app.platform} />

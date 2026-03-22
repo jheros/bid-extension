@@ -111,6 +111,60 @@ router.get('/stats', async (req, res) => {
   res.json({ day, week, month });
 });
 
+/** Owner, admin, teammate, or same-group member can download resume */
+async function canViewApplicationResume(viewerId, applicationOwnerId) {
+  if (viewerId === applicationOwnerId) return true;
+  const { data: me } = await supabase.from('users').select('role').eq('id', viewerId).single();
+  if (me?.role === 'admin') return true;
+  const { data: teamRows } = await supabase
+    .from('team_connections')
+    .select('requester_id, receiver_id')
+    .eq('status', 'accepted')
+    .or(`requester_id.eq.${viewerId},receiver_id.eq.${viewerId}`);
+  const teammateIds = (teamRows || []).map((row) =>
+    row.requester_id === viewerId ? row.receiver_id : row.requester_id
+  );
+  if (teammateIds.includes(applicationOwnerId)) return true;
+  const { data: myGroups } = await supabase.from('group_members').select('group_id').eq('user_id', viewerId);
+  if (!myGroups?.length) return false;
+  const groupIds = myGroups.map((g) => g.group_id);
+  const { data: shared } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .in('group_id', groupIds)
+    .eq('user_id', applicationOwnerId)
+    .limit(1);
+  return (shared?.length || 0) > 0;
+}
+
+router.get('/:id/resume-url', async (req, res) => {
+  const STORAGE_PREFIX = 'storage:';
+  const BUCKET = 'job-resumes';
+  try {
+    const { data: app, error } = await supabase
+      .from('job_applications')
+      .select('id, user_id, resume')
+      .eq('id', req.params.id)
+      .single();
+    if (error || !app) return res.status(404).json({ error: 'Application not found' });
+    if (!app.resume?.startsWith(STORAGE_PREFIX)) {
+      return res.status(400).json({ error: 'No uploaded resume for this application' });
+    }
+    const ok = await canViewApplicationResume(req.user.id, app.user_id);
+    if (!ok) return res.status(403).json({ error: 'Forbidden' });
+    const objectPath = app.resume.slice(STORAGE_PREFIX.length);
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(objectPath, 3600);
+    if (signErr || !signed?.signedUrl) {
+      return res.status(500).json({ error: signErr?.message || 'Could not create download link' });
+    }
+    res.json({ url: signed.signedUrl });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Failed to sign resume URL' });
+  }
+});
+
 router.post('/', async (req, res) => {
   const {
     job_title, company, location, work_type, job_type,

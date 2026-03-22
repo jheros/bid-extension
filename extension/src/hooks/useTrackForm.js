@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import { getBangkokDateTimeLocal, formatDateTime } from "../lib/datetime";
+import { isSupabaseConfigured } from "../services/supabase/client.js";
+import { uploadResumeFile } from "../services/supabase/resumes.js";
 
 const initialForm = () => ({
   jobTitle: "",
@@ -16,6 +18,7 @@ const initialForm = () => ({
 
 export function useTrackForm(showStatus, clearAfterSave) {
   const [form, setForm] = useState(initialForm);
+  const [resumeFile, setResumeFile] = useState(null);
 
   const setFormField = useCallback((key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -27,6 +30,7 @@ export function useTrackForm(showStatus, clearAfterSave) {
 
   const resetForm = useCallback(() => {
     setForm(initialForm());
+    setResumeFile(null);
   }, []);
 
   const handleSubmit = useCallback(
@@ -37,6 +41,21 @@ export function useTrackForm(showStatus, clearAfterSave) {
       if (!jobTitle || !company || !url || !datetime) {
         showStatus("Please fill in all required fields", "error");
         return;
+      }
+
+      let resumeValue = (resume && String(resume).trim()) || null;
+      if (resumeFile) {
+        if (!isSupabaseConfigured()) {
+          showStatus("Resume upload requires Supabase. Add URL/note in Resume note or configure Supabase.", "error");
+          return;
+        }
+        showStatus("Uploading resume...", "info");
+        try {
+          resumeValue = await uploadResumeFile(resumeFile);
+        } catch (err) {
+          showStatus(err.message || "Resume upload failed", "error");
+          return;
+        }
       }
 
       showStatus("Saving...", "info");
@@ -52,7 +71,7 @@ export function useTrackForm(showStatus, clearAfterSave) {
         jobType,
         salary,
         securityClearance,
-        resume,
+        resume: resumeValue,
         url,
         datetime: formatDateTime(datetime),
         profileId: selectedProfileId || null,
@@ -62,14 +81,17 @@ export function useTrackForm(showStatus, clearAfterSave) {
         if (response?.success) {
           showStatus("Saved successfully!", "success");
           if (clearAfterSave) resetForm();
-          else setForm((prev) => ({ ...prev, datetime: getBangkokDateTimeLocal() }));
+          else {
+            setResumeFile(null);
+            setForm((prev) => ({ ...prev, datetime: getBangkokDateTimeLocal() }));
+          }
         } else {
           showStatus(`Error: ${response?.error || "Unknown error"}`, "error");
         }
       });
     },
-    [form, showStatus, clearAfterSave, resetForm],
+    [form, showStatus, clearAfterSave, resetForm, resumeFile],
   );
 
-  return { form, setFormField, setFormFields, resetForm, handleSubmit };
+  return { form, setFormField, setFormFields, resetForm, handleSubmit, resumeFile, setResumeFile };
 }

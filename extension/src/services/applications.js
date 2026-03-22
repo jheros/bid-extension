@@ -19,13 +19,17 @@ export async function saveApplication(data) {
 }
 
 /**
- * Get applications for the current user at the given company. Used when tracking a page to show "same company" notification.
+ * Get applications for the current user at the given company (same profile scope only).
+ * Used when tracking a page to show "same company" notification.
+ * - With a profile id: only rows with that profile_id.
+ * - With no profile (global): only rows where profile_id is null.
  * Only Supabase is supported for this read; backend returns [].
  * @param {string} company - Company name
+ * @param {string|null|undefined} profileId - Selected profile UUID, or null/undefined for global
  * @returns {Promise<Array<{ job_title: string, applied_at: string }>>}
  */
-export async function getApplicationsByCompany(company) {
+export async function getApplicationsByCompany(company, profileId) {
   if (!company?.trim()) return [];
-  if (isSupabaseConfigured()) return getApplicationsByCompanyFromSupabase(company);
+  if (isSupabaseConfigured()) return getApplicationsByCompanyFromSupabase(company, profileId);
   return [];
 }

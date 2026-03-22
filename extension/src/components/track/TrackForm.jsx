@@ -8,10 +8,9 @@ const FIELDS = [
   { label: "Job Type", key: "jobType", placeholder: "e.g., Full-time, Contract" },
   { label: "Salary", key: "salary", placeholder: "e.g., $90,000 - $120,000 / year" },
   { label: "Security Clearance", key: "securityClearance", placeholder: "e.g., Secret, TS/SCI" },
-  { label: "Resume", key: "resume", placeholder: "e.g., link or version used (optional)" },
 ];
 
-export default function TrackForm({ form, setFormField, handleSubmit }) {
+export default function TrackForm({ form, setFormField, handleSubmit, resumeFile, setResumeFile }) {
   return (
     <form id="track-form" onSubmit={handleSubmit} className="space-y-4">
       {FIELDS.map(({ label, key, placeholder, required }) => (
@@ -24,6 +23,41 @@ export default function TrackForm({ form, setFormField, handleSubmit }) {
           required={required}
         />
       ))}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Resume file (optional)</label>
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setResumeFile(f);
+            e.target.value = "";
+          }}
+          className="block w-full text-sm text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-200 file:text-gray-800 hover:file:bg-gray-300"
+        />
+        {resumeFile ? (
+          <p className="text-xs text-gray-600 mt-1">
+            Selected: {resumeFile.name}{" "}
+            <button
+              type="button"
+              className="text-red-600 underline"
+              onClick={() => setResumeFile(null)}
+            >
+              Clear
+            </button>
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500 mt-1">PDF, Word, or text — max 10 MB. Saved to Supabase Storage.</p>
+        )}
+      </div>
+
+      <LabeledInput
+        label="Resume note (optional)"
+        value={form.resume}
+        onChange={(e) => setFormField("resume", e.target.value)}
+        placeholder="e.g., version name or link if not uploading a file"
+      />
 
       <LabeledInput
         label="URL"

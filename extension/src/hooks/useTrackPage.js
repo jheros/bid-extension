@@ -68,9 +68,13 @@ export function useTrackPage(setFormFields, showStatus, useAiExtractor) {
       });
 
       if (finalInfo.company?.trim()) {
+        const { selectedProfileId } = await chrome.storage.local.get("selectedProfileId");
         chrome.runtime.sendMessage({
           type: "CHECK_SAME_COMPANY",
-          data: { company: finalInfo.company.trim() },
+          data: {
+            company: finalInfo.company.trim(),
+            profileId: selectedProfileId || null,
+          },
         });
       }
 

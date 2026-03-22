@@ -76,22 +76,28 @@ export async function saveToSupabase(data) {
 }
 
 /**
- * Get applications for the current user at the given company (read-only).
- * Used to show "same company" notification when tracking a page.
+ * Get applications for the current user at the given company (read-only), scoped by profile.
+ * Same company under a different profile does not match. Global (no profile) only matches null profile_id.
  * @param {string} company - Company name
+ * @param {string|null|undefined} profileId - Selected profile UUID, or nullish for global
  * @returns {Promise<Array<{ job_title: string, applied_at: string }>>}
  */
-export async function getApplicationsByCompanyFromSupabase(company) {
+export async function getApplicationsByCompanyFromSupabase(company, profileId) {
   if (!isSupabaseConfigured() || !company?.trim()) return [];
   const client = await getSupabaseClientWithSession();
   const { data: { user } } = await client.auth.getUser();
   if (!user?.id) return [];
-  const { data, error } = await client
+  let q = client
     .from(TABLE)
     .select('job_title, applied_at')
     .eq('user_id', user.id)
-    .eq('company', company.trim())
-    .order('applied_at', { ascending: false });
+    .eq('company', company.trim());
+  if (profileId) {
+    q = q.eq('profile_id', profileId);
+  } else {
+    q = q.is('profile_id', null);
+  }
+  const { data, error } = await q.order('applied_at', { ascending: false });
   if (error) return [];
   return data || [];
 }

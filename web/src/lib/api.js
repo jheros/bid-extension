@@ -43,6 +43,8 @@ export const api = {
     request('/api/applications', { method: 'POST', body: JSON.stringify(data) }),
   deleteApplication: (id) =>
     request(`/api/applications/${id}`, { method: 'DELETE' }),
+  getResumeDownloadUrl: (applicationId) =>
+    request(`/api/applications/${applicationId}/resume-url`),
 
   profiles: {
     getProfiles: () => request('/api/profiles'),

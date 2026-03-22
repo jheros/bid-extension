@@ -65,11 +65,12 @@ function handleExtractJobInfoAI(data, sendResponse) {
 
 function handleCheckSameCompany(data, sendResponse) {
   const company = data?.company?.trim();
+  const profileId = data?.profileId || null;
   if (!company) {
     sendResponse({ success: true, applications: [] });
     return;
   }
-  getApplicationsByCompany(company)
+  getApplicationsByCompany(company, profileId)
     .then((applications) => {
       if (applications.length > 0) {
         const parts = applications.map(
