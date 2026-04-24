@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, ShieldCheck, Users2, RefreshCw } from 'lucide-react'
+import { Briefcase, ShieldCheck, Users2, RefreshCw, Search } from 'lucide-react'
 import supabase from '../lib/supabase.js'
 import { api } from '../lib/api.js'
 import { getTodayBangkok, getBangkokDayRange } from '../lib/dateUtils.js'
@@ -149,6 +149,7 @@ export default function Dashboard() {
   }
 
   const links = [
+    { to: '/job-board', label: 'Job Board', icon: Search },
     { to: '/team', label: 'Team', icon: Users2 },
     ...(profile?.role === 'admin' ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck, highlight: true }] : []),
   ]

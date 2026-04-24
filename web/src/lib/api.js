@@ -69,6 +69,16 @@ export const api = {
       request(`/api/team/requests/${id}`, { method: 'PATCH', body: JSON.stringify({ action }) }),
   },
 
+  jobBoard: {
+    getJobs: (params = {}) => {
+      const qs = buildQs(params)
+      return request(`/api/scraped-jobs${qs ? `?${qs}` : ''}`)
+    },
+    getJob: (id) => request(`/api/scraped-jobs/${id}`),
+    getViewed: () => request('/api/scraped-jobs/viewed'),
+    markViewed: (id) => request(`/api/scraped-jobs/${id}/viewed`, { method: 'POST' }),
+  },
+
   admin: {
     getApplications: (params = {}) => {
       const qs = buildQs(params)

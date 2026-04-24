@@ -4,6 +4,7 @@ import SignUp from './pages/SignUp.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import TeamSharing from './pages/TeamSharing.jsx'
+import JobBoard from './pages/JobBoard.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminRoute from './components/AdminRoute.jsx'
 
@@ -18,6 +19,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/job-board"
+        element={
+          <ProtectedRoute>
+            <JobBoard />
           </ProtectedRoute>
         }
       />

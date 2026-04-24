@@ -6,19 +6,24 @@ import applicationsRouter from './routes/applications.js';
 import adminRouter from './routes/admin.js';
 import teamRouter from './routes/team.js';
 import profilesRouter from './routes/profiles.js';
+import scrapedJobsRouter from './routes/scraped-jobs.js';
+import webhooksRouter from './routes/webhooks.js';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
+// Raw body for webhook HMAC verification — must precede express.json()
+app.use('/api/webhooks', express.raw({ type: 'application/json' }));
 app.use(express.json());
-
 
 app.use('/api/auth', authRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/team', teamRouter);
 app.use('/api/profiles', profilesRouter);
+app.use('/api/scraped-jobs', scrapedJobsRouter);
+app.use('/api/webhooks', webhooksRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'Bid Extension Backend is running' }));
 
