@@ -99,7 +99,7 @@ async function processDataset(datasetId) {
 
 router.post('/apify', async (req, res) => {
   const rawBody = req.body; // Buffer — express.raw() is mounted for /api/webhooks in index.js
-  const signature = req.headers['x-apify-signature'] || '';
+  const signature = req.headers['X-Apify-Signature'] || '';
 
   if (!verifySignature(rawBody, signature)) {
     return res.status(401).json({ error: 'Invalid signature' });
