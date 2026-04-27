@@ -5,8 +5,8 @@ import supabase from '../lib/supabase.js';
 const router = Router();
 
 function verifySignature(rawBody, signature) {
-  // const secret = process.env.APIFY_WEBHOOK_SECRET;
-  // if (!secret) return process.env.NODE_ENV === 'DEVELOPMENT';
+  const secret = process.env.APIFY_WEBHOOK_SECRET;
+  if (!secret) return process.env.NODE_ENV === 'DEVELOPMENT';
   if (!signature) return false;
   const expected = `SHA256:${crypto.createHmac('sha256', secret).update(rawBody).digest('hex')}`;
   try {

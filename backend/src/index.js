@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 // Raw body for webhook HMAC verification — must precede express.json()
-app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
+app.use('/api/webhooks', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
@@ -23,6 +23,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/team', teamRouter);
 app.use('/api/profiles', profilesRouter);
 app.use('/api/scraped-jobs', scrapedJobsRouter);
+app.use('/api/webhooks', webhooksRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'Bid Extension Backend is running' }));
 
