@@ -49,7 +49,6 @@ async function processDataset(datasetId) {
       console.error(`[webhook] Apify fetch failed: ${res.status} ${res.statusText}`);
       return;
     }
-
     const items = await res.json();
     if (!items?.length) {
       console.warn(`[webhook] No items in dataset ${datasetId}`);
@@ -118,9 +117,8 @@ router.post('/apify', async (req, res) => {
   }
 
   console.log(`[webhook] Received Apify webhook, dataset: ${datasetId}`);
+  await processDataset(datasetId);
   res.json({ status: 'accepted' });
-
-  setImmediate(() => processDataset(datasetId));
 });
 
 export default router;
