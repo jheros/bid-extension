@@ -6,7 +6,7 @@ const router = Router();
 
 function verifySignature(rawBody, signature) {
   const secret = process.env.APIFY_WEBHOOK_SECRET;
-  if (!secret) return process.env.NODE_ENV === 'DEVELOPMENT';
+  if (!secret) return process.env.NODE_ENV === 'PRODUCTION';
   if (!signature) return false;
   const expected = `SHA256:${crypto.createHmac('sha256', secret).update(rawBody).digest('hex')}`;
   try {
@@ -99,7 +99,7 @@ async function processDataset(datasetId) {
 
 router.post('/apify', async (req, res) => {
   const rawBody = req.body; // Buffer — express.raw() is mounted for /api/webhooks in index.js
-  const signature = req.headers['X-Apify-Signature'] || '';
+  const signature = req.headers['X-Apify-Signature'] || req.headers['x-apify-signature'] || '';
 
   if (!verifySignature(rawBody, signature)) {
     return res.status(401).json({ error: 'Invalid signature' });
