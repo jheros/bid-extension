@@ -56,7 +56,6 @@ export default function ScrapedJobsTable({ jobs, viewedJobIds, selectedJobId, on
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Remote</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Salary</th>
               <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Posted</th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Apply</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -78,9 +77,24 @@ export default function ScrapedJobsTable({ jobs, viewedJobIds, selectedJobId, on
                   <td className="px-4 py-3 min-w-[240px] max-w-[360px]">
                     <div className="flex items-center gap-2">
                       {viewed && <Eye size={12} className="text-gray-600 shrink-0" />}
-                      <span className={`font-medium truncate ${viewed ? 'text-gray-500' : 'text-white'}`}>
-                        {job.title || '—'}
-                      </span>
+                      {job.job_url ? (
+                        <a
+                          href={job.job_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className={`font-medium truncate flex items-center gap-1 hover:underline ${
+                            viewed ? 'text-gray-500 hover:text-gray-400' : 'text-white hover:text-blue-400'
+                          }`}
+                        >
+                          {job.title || '—'}
+                          <ExternalLink size={11} className="shrink-0 opacity-50" />
+                        </a>
+                      ) : (
+                        <span className={`font-medium truncate ${viewed ? 'text-gray-500' : 'text-white'}`}>
+                          {job.title || '—'}
+                        </span>
+                      )}
                       {isNew(job.posted_date) && (
                         <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-green-900/60 text-green-400 text-[10px] font-medium border border-green-700/50">
                           New
@@ -102,22 +116,6 @@ export default function ScrapedJobsTable({ jobs, viewedJobIds, selectedJobId, on
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                     {formatDateShort(job.posted_date)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {job.job_url ? (
-                      <a
-                        href={job.job_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600 transition-colors"
-                      >
-                        <ExternalLink size={11} />
-                        Apply
-                      </a>
-                    ) : (
-                      <span className="text-gray-600">—</span>
-                    )}
                   </td>
                 </tr>
               )
