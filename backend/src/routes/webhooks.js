@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import supabase from '../lib/supabase.js';
+import { deduplicateJob } from '../lib/dedup.js';
 
 const router = Router();
 
@@ -87,6 +88,12 @@ async function processDataset(datasetId) {
         console.error(`[webhook] Upsert error for external_id ${externalId}:`, error.message);
       } else {
         upserted++;
+        await deduplicateJob(supabase, {
+          externalId: String(externalId),
+          title: item.title || '',
+          companyName: item.organization || '',
+          description: toStr(item.description_text) || '',
+        });
       }
     }
 
