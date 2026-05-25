@@ -1,4 +1,35 @@
+import { useRef } from 'react'
 import { Eye, ExternalLink } from 'lucide-react'
+
+function ScrollCell({ children, className = '' }) {
+  const outerRef = useRef(null)
+  const innerRef = useRef(null)
+
+  const handleMouseEnter = () => {
+    if (!outerRef.current || !innerRef.current) return
+    const overflow = innerRef.current.scrollWidth - outerRef.current.clientWidth
+    if (overflow <= 0) return
+    outerRef.current.style.setProperty('--scroll-dist', `${overflow}px`)
+    innerRef.current.classList.add('marquee-active')
+  }
+
+  const handleMouseLeave = () => {
+    innerRef.current?.classList.remove('marquee-active')
+  }
+
+  return (
+    <div
+      ref={outerRef}
+      className={`overflow-hidden ${className}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div ref={innerRef} className="whitespace-nowrap">
+        {children}
+      </div>
+    </div>
+  )
+}
 
 function parseRemoteLocation(val) {
   if (!val) return '—'
@@ -77,24 +108,26 @@ export default function ScrapedJobsTable({ jobs, viewedJobIds, selectedJobId, on
                   <td className="px-4 py-3 min-w-[240px] max-w-[360px]">
                     <div className="flex items-center gap-2">
                       {viewed && <Eye size={12} className="text-gray-600 shrink-0" />}
-                      {job.job_url ? (
-                        <a
-                          href={job.job_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className={`font-medium truncate flex items-center gap-1 hover:underline ${
-                            viewed ? 'text-gray-500 hover:text-gray-400' : 'text-white hover:text-blue-400'
-                          }`}
-                        >
-                          {job.title || '—'}
-                          <ExternalLink size={11} className="shrink-0 opacity-50" />
-                        </a>
-                      ) : (
-                        <span className={`font-medium truncate ${viewed ? 'text-gray-500' : 'text-white'}`}>
-                          {job.title || '—'}
-                        </span>
-                      )}
+                      <ScrollCell className="flex-1 min-w-0">
+                        {job.job_url ? (
+                          <a
+                            href={job.job_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className={`inline-flex items-center gap-1 font-medium hover:underline ${
+                              viewed ? 'text-gray-500 hover:text-gray-400' : 'text-white hover:text-blue-400'
+                            }`}
+                          >
+                            {job.title || '—'}
+                            <ExternalLink size={11} className="shrink-0 opacity-50" />
+                          </a>
+                        ) : (
+                          <span className={`font-medium ${viewed ? 'text-gray-500' : 'text-white'}`}>
+                            {job.title || '—'}
+                          </span>
+                        )}
+                      </ScrollCell>
                       {isNew(job.posted_date) && (
                         <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-green-900/60 text-green-400 text-[10px] font-medium border border-green-700/50">
                           New
@@ -102,7 +135,9 @@ export default function ScrapedJobsTable({ jobs, viewedJobIds, selectedJobId, on
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{job.company_name || '—'}</td>
+                  <td className="px-4 py-3 text-gray-300 max-w-[180px]">
+                    <ScrollCell>{job.company_name || '—'}</ScrollCell>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="px-2 py-0.5 rounded-full text-xs bg-gray-800 text-gray-400 border border-gray-700/50">
                       {parseEmploymentType(job.employment_type)}

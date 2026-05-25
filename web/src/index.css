@@ -22,3 +22,13 @@
 .applications-table-scroll::-webkit-scrollbar-thumb:hover {
   background: rgb(107 114 128);
 }
+
+/* Marquee scroll for overflowing table cells */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(var(--scroll-dist, 0px) * -1)); }
+}
+
+.marquee-active {
+  animation: marquee-scroll 3s 0.35s linear forwards;
+}
