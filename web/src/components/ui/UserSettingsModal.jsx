@@ -11,6 +11,7 @@ export default function UserSettingsModal({ user, profile, profiles, onClose, on
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -76,12 +77,14 @@ export default function UserSettingsModal({ user, profile, profiles, onClose, on
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this profile? Applications linked to it will become unlinked.')) return
+  const handleDelete = async () => {
+    if (!deleteConfirm) return
+    const { id, deleteApps } = deleteConfirm
     setDeletingId(id)
+    setDeleteConfirm(null)
     setError('')
     try {
-      await api.profiles.deleteProfile(id)
+      await api.profiles.deleteProfile(id, deleteApps)
       const updated = await api.profiles.getProfiles()
       onProfilesChange(updated)
     } catch (err) {
@@ -139,9 +142,36 @@ export default function UserSettingsModal({ user, profile, profiles, onClose, on
               <li className="text-sm text-gray-500 text-center py-4">No profiles yet. Add one below.</li>
             )}
             {profiles.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5">
-                {editingId === p.id ? (
-                  <>
+              <li key={p.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5">
+                {deleteConfirm?.id === p.id ? (
+                  <div className="space-y-2.5">
+                    <p className="text-xs text-gray-300">Delete <span className="font-medium text-white">{p.name}</span>?</p>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={deleteConfirm.deleteApps}
+                        onChange={(e) => setDeleteConfirm((prev) => ({ ...prev, deleteApps: e.target.checked }))}
+                        className="accent-red-500"
+                      />
+                      <span className="text-xs text-gray-400">Also delete all linked applications</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleDelete}
+                        className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-xs text-white font-medium transition-colors"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(null)}
+                        className="px-2.5 py-1 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : editingId === p.id ? (
+                  <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={editName}
@@ -165,9 +195,9 @@ export default function UserSettingsModal({ user, profile, profiles, onClose, on
                     >
                       <X size={15} />
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <>
+                  <div className="flex items-center gap-2">
                     <span className="flex-1 text-sm text-white truncate">{p.name}</span>
                     <button
                       onClick={() => startEdit(p)}
@@ -177,14 +207,14 @@ export default function UserSettingsModal({ user, profile, profiles, onClose, on
                       <Pencil size={14} />
                     </button>
                     <button
-                      onClick={() => handleDelete(p.id)}
+                      onClick={() => setDeleteConfirm({ id: p.id, deleteApps: false })}
                       disabled={deletingId === p.id}
                       className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-gray-700 transition-colors disabled:opacity-50"
                       title="Delete profile"
                     >
                       {deletingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>
-                  </>
+                  </div>
                 )}
               </li>
             ))}

@@ -52,8 +52,8 @@ export const api = {
       request('/api/profiles', { method: 'POST', body: JSON.stringify({ name }) }),
     updateProfile: (id, name) =>
       request(`/api/profiles/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
-    deleteProfile: (id) =>
-      request(`/api/profiles/${id}`, { method: 'DELETE' }),
+    deleteProfile: (id, deleteApplications = false) =>
+      request(`/api/profiles/${id}?delete_applications=${deleteApplications}`, { method: 'DELETE' }),
   },
 
   team: {
