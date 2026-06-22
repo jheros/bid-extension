@@ -192,12 +192,10 @@ router.post('/', async (req, res) => {
   // - Saving with profile A → blocked if (profile=A) OR (profile=null) already exists.
   // - Saving with no profile → blocked if ANY row (any profile or none) already exists.
   let dupQuery = supabase
-    .from('job_applications')
-    .select('id')
-    .eq('user_id', req.user.id)
-    .eq('url', url)
-    .eq('job_title', job_title)
-    .eq('company', company);
+      .from('job_applications')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .eq('url', url)
   if (profile_id) {
     dupQuery = dupQuery.or(`profile_id.eq.${profile_id},profile_id.is.null`);
   }

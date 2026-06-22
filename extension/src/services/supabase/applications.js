@@ -44,8 +44,6 @@ export async function saveToSupabase(data) {
     .select('id', { head: true, count: 'exact' })
     .eq('user_id', user.id)
     .eq('url', payload.url)
-    .eq('job_title', payload.job_title)
-    .eq('company', payload.company);
   if (payload.profile_id) {
     dupQuery = dupQuery.or(`profile_id.eq.${payload.profile_id},profile_id.is.null`);
   }
