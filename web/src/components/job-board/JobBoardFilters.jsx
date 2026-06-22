@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Search, X, Eye, EyeOff } from 'lucide-react'
 
 const WORK_TYPE_OPTIONS = [
@@ -24,9 +25,8 @@ const inputClass =
   'px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600'
 
 export default function JobBoardFilters({
-  titleFilter, onTitleChange,
-  companyFilter, onCompanyChange,
-  locationFilter, onLocationChange,
+  titleFilter, companyFilter, locationFilter,
+  onSearchText,
   workTypeFilter, onWorkTypeChange,
   postedDateFilter, onPostedDateChange,
   sortBy, onSortByChange,
@@ -35,7 +35,26 @@ export default function JobBoardFilters({
   onReset,
   totalResults,
 }) {
-  const hasFilters = titleFilter || companyFilter || locationFilter || workTypeFilter || postedDateFilter
+  const [draftTitle, setDraftTitle] = useState(titleFilter)
+  const [draftCompany, setDraftCompany] = useState(companyFilter)
+  const [draftLocation, setDraftLocation] = useState(locationFilter)
+
+  useEffect(() => { setDraftTitle(titleFilter) }, [titleFilter])
+  useEffect(() => { setDraftCompany(companyFilter) }, [companyFilter])
+  useEffect(() => { setDraftLocation(locationFilter) }, [locationFilter])
+
+  const handleSearch = () => onSearchText(draftTitle, draftCompany, draftLocation)
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleSearch() }
+
+  const handleReset = () => {
+    setDraftTitle('')
+    setDraftCompany('')
+    setDraftLocation('')
+    onSearchText('', '', '')
+    onReset()
+  }
+
+  const hasFilters = draftTitle || draftCompany || draftLocation || titleFilter || companyFilter || locationFilter || workTypeFilter || postedDateFilter
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
@@ -44,26 +63,36 @@ export default function JobBoardFilters({
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
-            value={titleFilter}
-            onChange={onTitleChange}
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search by title..."
-            className={`w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600`}
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
           />
         </div>
         <input
           type="text"
-          value={companyFilter}
-          onChange={onCompanyChange}
+          value={draftCompany}
+          onChange={(e) => setDraftCompany(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Company..."
           className={`flex-1 ${inputClass}`}
         />
         <input
           type="text"
-          value={locationFilter}
-          onChange={onLocationChange}
+          value={draftLocation}
+          onChange={(e) => setDraftLocation(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Location..."
           className={`flex-1 ${inputClass}`}
         />
+        <button
+          onClick={handleSearch}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 text-sm text-white transition-colors whitespace-nowrap"
+        >
+          <Search size={13} />
+          Search
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -118,7 +147,7 @@ export default function JobBoardFilters({
         </p>
         {hasFilters && (
           <button
-            onClick={onReset}
+            onClick={handleReset}
             className="flex items-center gap-1 text-xs text-gray-500 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
           >
             <X size={12} />

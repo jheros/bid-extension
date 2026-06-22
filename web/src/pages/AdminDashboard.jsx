@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(true)
   const [groupFilter, setGroupFilter] = useState('')
   const [searchName, setSearchName] = useState('')
+  const [draftSearchName, setDraftSearchName] = useState('')
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [groupSettingsGroup, setGroupSettingsGroup] = useState(null)
 
@@ -240,15 +241,24 @@ export default function AdminDashboard() {
                   <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Users by Group</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
-                    <input
-                      type="text"
-                      value={searchName}
-                      onChange={(e) => setSearchName(e.target.value)}
-                      placeholder="Search by name..."
-                      className="pl-8 pr-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 w-48"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input
+                        type="text"
+                        value={draftSearchName}
+                        onChange={(e) => setDraftSearchName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && setSearchName(draftSearchName)}
+                        placeholder="Search by name..."
+                        className="pl-8 pr-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 w-48"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setSearchName(draftSearchName)}
+                      className="p-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white transition-colors"
+                    >
+                      <Search size={13} />
+                    </button>
                   </div>
                   <select
                     value={groupFilter}
@@ -421,7 +431,7 @@ export default function AdminDashboard() {
             {appsViewMode === 'list' && (
               <ApplicationFilters
                 search={search}
-                onSearchChange={(e) => { setSearch(e.target.value); resetPage() }}
+                onSearchChange={(val) => { setSearch(val); resetPage() }}
                 filterPlatform={filterPlatform}
                 onPlatformChange={(e) => { setFilterPlatform(e.target.value); resetPage() }}
                 filterJobType={filterJobType}

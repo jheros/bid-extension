@@ -269,7 +269,7 @@ export default function Dashboard() {
         {viewMode === 'list' && (
           <ApplicationFilters
             search={search}
-            onSearchChange={(e) => { setSearch(e.target.value); resetPage() }}
+            onSearchChange={(val) => { setSearch(val); resetPage() }}
             filterPlatform={filterPlatform}
             onPlatformChange={(e) => { setFilterPlatform(e.target.value); resetPage() }}
             filterJobType={filterJobType}

@@ -440,8 +440,8 @@ export default function TeamSharing() {
           {viewMode === "list" && (
             <ApplicationFilters
               search={search}
-              onSearchChange={(e) => {
-                setSearch(e.target.value);
+              onSearchChange={(val) => {
+                setSearch(val);
                 resetPage();
               }}
               filterPlatform={filterPlatform}

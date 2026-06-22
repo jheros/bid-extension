@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import { PLATFORMS, JOB_TYPES, WORK_TYPES } from '../../constants.js'
 
@@ -11,18 +12,34 @@ export default function ApplicationFilters({
   filterWorkType,
   onWorkTypeChange,
 }) {
+  const [draft, setDraft] = useState(search)
+
+  useEffect(() => { setDraft(search) }, [search])
+
+  const commit = () => onSearchChange(draft)
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={onSearchChange}
-            placeholder="Search by title, company, location..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
-          />
+        <div className="flex flex-1 gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && commit()}
+              placeholder="Search by title, company, location..."
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600"
+            />
+          </div>
+          <button
+            onClick={commit}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 text-sm text-white transition-colors whitespace-nowrap"
+          >
+            <Search size={13} />
+            Search
+          </button>
         </div>
         <select
           value={filterPlatform}

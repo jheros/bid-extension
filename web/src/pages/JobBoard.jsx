@@ -194,11 +194,9 @@ export default function JobBoard() {
 
         <JobBoardFilters
           titleFilter={titleFilter}
-          onTitleChange={(e) => { setTitleFilter(e.target.value); resetPage() }}
           companyFilter={companyFilter}
-          onCompanyChange={(e) => { setCompanyFilter(e.target.value); resetPage() }}
           locationFilter={locationFilter}
-          onLocationChange={(e) => { setLocationFilter(e.target.value); resetPage() }}
+          onSearchText={(t, c, l) => { setTitleFilter(t); setCompanyFilter(c); setLocationFilter(l); resetPage() }}
           workTypeFilter={workTypeFilter}
           onWorkTypeChange={(e) => { setWorkTypeFilter(e.target.value); resetPage() }}
           postedDateFilter={postedDateFilter}
@@ -210,7 +208,6 @@ export default function JobBoard() {
           showViewed={showViewed}
           onToggleViewed={() => setShowViewed((v) => !v)}
           onReset={() => {
-            setTitleFilter(''); setCompanyFilter(''); setLocationFilter('')
             setWorkTypeFilter(''); setPostedDateFilter('')
             setSortBy('posted_date'); setSortOrder('desc')
             resetPage()
