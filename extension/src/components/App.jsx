@@ -22,7 +22,7 @@ export default function App() {
   const settings = useSettings();
   const { saveSettings } = settings;
   const auth = useAuth();
-  const { form, setFormField, setFormFields, handleSubmit, resumeFile, setResumeFile } = useTrackForm(
+  const { form, setFormField, setFormFields, refreshDateTime, handleSubmit, resumeFile, setResumeFile } = useTrackForm(
     showStatus,
     settings.clearAfterSave,
   );
@@ -38,6 +38,10 @@ export default function App() {
     },
     [saveSettings, showStatus],
   );
+
+  useEffect(() => {
+    if (isOpen) refreshDateTime();
+  }, [isOpen, refreshDateTime]);
 
   useEffect(() => {
     const handleKeyPress = (e) => {

@@ -33,6 +33,10 @@ export function useTrackForm(showStatus, clearAfterSave) {
     setResumeFile(null);
   }, []);
 
+  const refreshDateTime = useCallback(() => {
+    setForm((prev) => ({ ...prev, datetime: getBangkokDateTimeLocal() }));
+  }, []);
+
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
@@ -93,5 +97,5 @@ export function useTrackForm(showStatus, clearAfterSave) {
     [form, showStatus, clearAfterSave, resetForm, resumeFile],
   );
 
-  return { form, setFormField, setFormFields, resetForm, handleSubmit, resumeFile, setResumeFile };
+  return { form, setFormField, setFormFields, resetForm, refreshDateTime, handleSubmit, resumeFile, setResumeFile };
 }
