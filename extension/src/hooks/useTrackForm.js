@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { getBangkokDateTimeLocal, formatDateTime } from "../lib/datetime";
+import { getBangkokDateTimeLocal, formatDateTime, getBangkokDateTime } from "../lib/datetime";
 import { isSupabaseConfigured } from "../services/supabase/client.js";
 import { uploadResumeFile } from "../services/supabase/resumes.js";
 
@@ -19,9 +19,11 @@ const initialForm = () => ({
 export function useTrackForm(showStatus, clearAfterSave) {
   const [form, setForm] = useState(initialForm);
   const [resumeFile, setResumeFile] = useState(null);
+  const [datetimeEdited, setDatetimeEdited] = useState(false);
 
   const setFormField = useCallback((key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (key === "datetime") setDatetimeEdited(true);
   }, []);
 
   const setFormFields = useCallback((partial) => {
@@ -31,10 +33,12 @@ export function useTrackForm(showStatus, clearAfterSave) {
   const resetForm = useCallback(() => {
     setForm(initialForm());
     setResumeFile(null);
+    setDatetimeEdited(false);
   }, []);
 
   const refreshDateTime = useCallback(() => {
     setForm((prev) => ({ ...prev, datetime: getBangkokDateTimeLocal() }));
+    setDatetimeEdited(false);
   }, []);
 
   const handleSubmit = useCallback(
@@ -42,7 +46,7 @@ export function useTrackForm(showStatus, clearAfterSave) {
       e.preventDefault();
       const { jobTitle, company, location, workType, jobType, salary, securityClearance, resume, url, datetime } = form;
 
-      if (!jobTitle || !company || !url || !datetime) {
+      if (!jobTitle || !company || !url) {
         showStatus("Please fill in all required fields", "error");
         return;
       }
@@ -77,7 +81,7 @@ export function useTrackForm(showStatus, clearAfterSave) {
         securityClearance,
         resume: resumeValue,
         url,
-        datetime: formatDateTime(datetime),
+        datetime: datetimeEdited ? formatDateTime(datetime) : getBangkokDateTime(),
         profileId: selectedProfileId || null,
       };
 
@@ -88,13 +92,14 @@ export function useTrackForm(showStatus, clearAfterSave) {
           else {
             setResumeFile(null);
             setForm((prev) => ({ ...prev, datetime: getBangkokDateTimeLocal() }));
+            setDatetimeEdited(false);
           }
         } else {
           showStatus(`Error: ${response?.error || "Unknown error"}`, "error");
         }
       });
     },
-    [form, showStatus, clearAfterSave, resetForm, resumeFile],
+    [form, datetimeEdited, showStatus, clearAfterSave, resetForm, resumeFile],
   );
 
   return { form, setFormField, setFormFields, resetForm, refreshDateTime, handleSubmit, resumeFile, setResumeFile };
