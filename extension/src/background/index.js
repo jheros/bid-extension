@@ -4,6 +4,7 @@ import { showNotification } from '../services/notifications.js';
 import { signIn, signOut } from '../services/auth.js';
 import { saveApplication, getApplicationsByCompany } from '../services/applications.js';
 import { extractJobInfoWithAI } from '../services/ai/openrouter.js';
+import { lookupCachedParse, storeCachedParse } from '../services/backend/jobCache.js';
 
 function handleShowNotification(data) {
   showNotification({
@@ -63,6 +64,18 @@ function handleExtractJobInfoAI(data, sendResponse) {
     .catch((error) => sendResponse({ success: false, error: error.message }));
 }
 
+function handleCacheLookup(data, sendResponse) {
+  lookupCachedParse(data?.url)
+    .then((result) => sendResponse({ success: true, ...result }))
+    .catch(() => sendResponse({ success: true, cached: false }));
+}
+
+function handleCacheStore(data, sendResponse) {
+  storeCachedParse(data || {})
+    .then(() => sendResponse({ success: true }))
+    .catch(() => sendResponse({ success: false }));
+}
+
 function handleCheckSameCompany(data, sendResponse) {
   const company = data?.company?.trim();
   const profileId = data?.profileId || null;
@@ -104,6 +117,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       return true;
     case MESSAGE_TYPES.EXTRACT_JOB_INFO_AI:
       handleExtractJobInfoAI(request.data || {}, sendResponse);
+      return true;
+    case MESSAGE_TYPES.CACHE_LOOKUP:
+      handleCacheLookup(request.data || {}, sendResponse);
+      return true;
+    case MESSAGE_TYPES.CACHE_STORE:
+      handleCacheStore(request.data || {}, sendResponse);
       return true;
     case MESSAGE_TYPES.CHECK_SAME_COMPANY:
       handleCheckSameCompany(request.data || {}, sendResponse);

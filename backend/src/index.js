@@ -7,6 +7,7 @@ import adminRouter from './routes/admin.js';
 import teamRouter from './routes/team.js';
 import profilesRouter from './routes/profiles.js';
 import scrapedJobsRouter from './routes/scraped-jobs.js';
+import jobParseRouter from './routes/job-parse.js';
 import webhooksRouter from './routes/webhooks.js';
 dotenv.config();
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/team', teamRouter);
 app.use('/api/profiles', profilesRouter);
 app.use('/api/scraped-jobs', scrapedJobsRouter);
+app.use('/api/job-parse', jobParseRouter);
 app.use('/api/webhooks', webhooksRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'Bid Extension Backend is running' }));

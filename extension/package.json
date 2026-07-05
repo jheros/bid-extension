@@ -13,6 +13,7 @@
     "build:web": "cd ../web && npm run build"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@supabase/supabase-js": "^2.97.0",
     "@tailwindcss/postcss": "^4.2.1",
     "@tailwindcss/vite": "^4.1.18",
