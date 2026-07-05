@@ -84,17 +84,32 @@ function mapGreenhouseFields(json) {
   };
 }
 
-async function tryGreenhouseApi() {
-  const { hostname, pathname } = window.location;
-  if (!/greenhouse\.(io|com)$/.test(hostname)) return "";
+// Resolve { boardToken, jobId } from the supported Greenhouse URL shapes.
+function parseGreenhouseRef() {
+  const { hostname, pathname, search } = window.location;
+  if (!/greenhouse\.(io|com)$/.test(hostname)) return null;
 
-  // job-boards.greenhouse.io/{token}/jobs/{id}  |  boards.greenhouse.io/{token}/jobs/{id}
-  const match = pathname.match(/^\/([^/]+)\/jobs\/(\d+)/);
-  if (!match) return "";
-  const [, token, jobId] = match;
+  // Path form: (job-)boards.greenhouse.io/{token}/jobs/{id}
+  const path = pathname.match(/^\/([^/]+)\/jobs\/(\d+)/);
+  if (path) return { boardToken: path[1], jobId: path[2] };
+
+  // Embed form: .../embed/job_app?for={token}&token={jobId}
+  if (/\/embed\/job_app/.test(pathname)) {
+    const params = new URLSearchParams(search);
+    const boardToken = params.get("for");
+    const jobId = params.get("token");
+    if (boardToken && jobId) return { boardToken, jobId };
+  }
+
+  return null;
+}
+
+async function tryGreenhouseApi() {
+  const ref = parseGreenhouseRef();
+  if (!ref) return "";
 
   const res = await fetch(
-    `https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${jobId}`,
+    `https://boards-api.greenhouse.io/v1/boards/${ref.boardToken}/jobs/${ref.jobId}`,
   );
   if (!res.ok) return "";
   const json = await res.json();
