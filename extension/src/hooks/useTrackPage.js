@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { extractJobInfo } from "../utils/jobExtractor";
 import { extractJobDescription } from "../utils/descriptionExtractor";
-import { DEFAULT_MODEL } from "../services/ai/openrouter";
 
 function sendMessage(message) {
   return new Promise((resolve) => chrome.runtime.sendMessage(message, resolve));
@@ -82,12 +81,11 @@ export function useTrackPage(setFormFields, showStatus, useAiExtractor) {
           if (aiResponse?.success && aiResponse.result) {
             finalInfo = mergeJobInfo(fallbackInfo, aiResponse.result);
             // Populate the shared cache for the next user (best-effort).
-            const { deepseekModel } = await chrome.storage.local.get("deepseekModel");
             void requestCacheStore({
               url,
               description,
               fields: aiResponse.result,
-              model: deepseekModel || DEFAULT_MODEL,
+              model: aiResponse.model,
             });
           } else {
             statusText = `AI extraction failed, used fallback parser: ${aiResponse?.error || "Unknown error"}`;

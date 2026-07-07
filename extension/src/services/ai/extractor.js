@@ -1,7 +1,24 @@
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// Claude Haiku 4.5 via OpenRouter — cheap, capable tier for bounded structured extraction.
-// Verify the slug against OpenRouter's live model list; user can override via settings.
-export const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+// Provider-agnostic job-field extractor. OpenRouter and OpenAI both speak the
+// OpenAI-compatible chat/completions shape, so only the endpoint, credential, and
+// model differ per provider.
+const PROVIDERS = {
+  openrouter: {
+    label: 'OpenRouter',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    keyName: 'deepseekApiKey', // legacy key name — holds the OpenRouter credential
+    modelName: 'deepseekModel',
+    defaultModel: 'anthropic/claude-haiku-4.5',
+  },
+  openai: {
+    label: 'OpenAI',
+    url: 'https://api.openai.com/v1/chat/completions',
+    keyName: 'openaiApiKey',
+    modelName: 'openaiModel',
+    defaultModel: 'gpt-4o-mini',
+  },
+};
+
+const DEFAULT_PROVIDER = 'openrouter';
 
 const SYSTEM_PROMPT = [
   'You extract structured data from a single job posting description.',
@@ -32,22 +49,28 @@ function normalizeValue(value) {
 }
 
 export async function extractJobInfoWithAI(data) {
-  const { deepseekApiKey, deepseekModel, useAiExtractor } = await chrome.storage.local.get([
+  const stored = await chrome.storage.local.get([
+    'aiProvider',
+    'useAiExtractor',
     'deepseekApiKey',
     'deepseekModel',
-    'useAiExtractor',
+    'openaiApiKey',
+    'openaiModel',
   ]);
-  if (!useAiExtractor) throw new Error('AI extractor is disabled in settings.');
-  if (!deepseekApiKey) throw new Error('DeepSeek API key is not configured.');
+  if (!stored.useAiExtractor) throw new Error('AI extractor is disabled in settings.');
 
-  const model = deepseekModel || DEFAULT_MODEL;
+  const provider = PROVIDERS[stored.aiProvider] || PROVIDERS[DEFAULT_PROVIDER];
+  const apiKey = stored[provider.keyName];
+  if (!apiKey) throw new Error(`${provider.label} API key is not configured.`);
+
+  const model = stored[provider.modelName] || provider.defaultModel;
   // Prefer the cleaned description from the extractor cascade; fall back to pageText.
   const jobDescription = data?.description ?? data?.pageText ?? '';
 
-  const response = await fetch(OPENROUTER_URL, {
+  const response = await fetch(provider.url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${deepseekApiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -63,7 +86,7 @@ export async function extractJobInfoWithAI(data) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || 'Failed to extract job info with AI.');
+    throw new Error(errorData.error?.message || `Failed to extract job info via ${provider.label}.`);
   }
 
   const completion = await response.json();
@@ -73,5 +96,5 @@ export async function extractJobInfoWithAI(data) {
   for (const key of EXTRACT_KEYS) {
     result[key] = normalizeValue(parsed[key]);
   }
-  return result;
+  return { result, model };
 }

@@ -23,10 +23,16 @@ export default function SettingsTab({
   setBackendUrl,
   useAiExtractor,
   setUseAiExtractor,
+  aiProvider,
+  setAiProvider,
   deepseekApiKey,
   setDeepseekApiKey,
   deepseekModel,
   setDeepseekModel,
+  openaiApiKey,
+  setOpenaiApiKey,
+  openaiModel,
+  setOpenaiModel,
   clearAfterSave,
   setClearAfterSave,
   onSaveSettings,
@@ -58,10 +64,16 @@ export default function SettingsTab({
         setBackendUrl={setBackendUrl}
         useAiExtractor={useAiExtractor}
         setUseAiExtractor={setUseAiExtractor}
+        aiProvider={aiProvider}
+        setAiProvider={setAiProvider}
         deepseekApiKey={deepseekApiKey}
         setDeepseekApiKey={setDeepseekApiKey}
         deepseekModel={deepseekModel}
         setDeepseekModel={setDeepseekModel}
+        openaiApiKey={openaiApiKey}
+        setOpenaiApiKey={setOpenaiApiKey}
+        openaiModel={openaiModel}
+        setOpenaiModel={setOpenaiModel}
         clearAfterSave={clearAfterSave}
         setClearAfterSave={setClearAfterSave}
         onSubmit={onSaveSettings}

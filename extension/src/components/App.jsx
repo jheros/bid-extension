@@ -95,10 +95,16 @@ export default function App() {
                 setBackendUrl={settings.setBackendUrl}
                 useAiExtractor={settings.useAiExtractor}
                 setUseAiExtractor={settings.setUseAiExtractor}
+                aiProvider={settings.aiProvider}
+                setAiProvider={settings.setAiProvider}
                 deepseekApiKey={settings.deepseekApiKey}
                 setDeepseekApiKey={settings.setDeepseekApiKey}
                 deepseekModel={settings.deepseekModel}
                 setDeepseekModel={settings.setDeepseekModel}
+                openaiApiKey={settings.openaiApiKey}
+                setOpenaiApiKey={settings.setOpenaiApiKey}
+                openaiModel={settings.openaiModel}
+                setOpenaiModel={settings.setOpenaiModel}
                 clearAfterSave={settings.clearAfterSave}
                 setClearAfterSave={settings.setClearAfterSave}
                 onSaveSettings={handleSaveSettings}

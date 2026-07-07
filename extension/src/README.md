@@ -15,7 +15,7 @@
   - `applications.js` – Facade: `saveApplication(data)` (dispatches to Supabase or backend).
   - `supabase/` – `client.js`, `auth.js`, `applications.js`.
   - `backend/` – `auth.js`, `applications.js`.
-  - `ai/openrouter.js` – `extractJobInfoWithAI(data)`.
+  - `ai/extractor.js` – `extractJobInfoWithAI(data)` (dispatches to the selected provider: OpenRouter or OpenAI).
 
 - **`background/index.js`** – Message router: handles `MESSAGE_TYPES` and delegates to services.
 

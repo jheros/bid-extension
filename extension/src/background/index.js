@@ -3,7 +3,7 @@ import { getBangkokDateTime, formatAppliedAtForNotification } from '../lib/datet
 import { showNotification } from '../services/notifications.js';
 import { signIn, signOut } from '../services/auth.js';
 import { saveApplication, getApplicationsByCompany } from '../services/applications.js';
-import { extractJobInfoWithAI } from '../services/ai/openrouter.js';
+import { extractJobInfoWithAI } from '../services/ai/extractor.js';
 import { lookupCachedParse, storeCachedParse } from '../services/backend/jobCache.js';
 
 function handleShowNotification(data) {
@@ -60,7 +60,7 @@ function handleSignOut(sendResponse) {
 
 function handleExtractJobInfoAI(data, sendResponse) {
   extractJobInfoWithAI(data)
-    .then((result) => sendResponse({ success: true, result }))
+    .then(({ result, model }) => sendResponse({ success: true, result, model }))
     .catch((error) => sendResponse({ success: false, error: error.message }));
 }
 

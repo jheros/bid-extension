@@ -17,6 +17,7 @@
     "http://localhost:3000/*",
     "http://localhost:4000/*",
     "https://openrouter.ai/*",
+    "https://api.openai.com/*",
     "https://*.supabase.co/*"
   ]
 }
