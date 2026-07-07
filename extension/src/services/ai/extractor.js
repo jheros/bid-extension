@@ -48,6 +48,29 @@ function normalizeValue(value) {
   return (value ?? '').toString().trim();
 }
 
+// /v1/models returns every model the account can access (chat, embeddings, tts, image…)
+// with no capability flags, so we filter to chat-capable ids by id shape. Adjust here.
+const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
+const CHAT_MODEL_RE = /^(gpt-|chatgpt-|o1|o3|o4)/;
+const NON_CHAT_RE = /(embedding|tts|whisper|audio|realtime|image|dall-e|moderation|transcribe|search|codex)/;
+
+export async function listOpenAiModels(apiKey) {
+  const key = (apiKey || '').trim();
+  if (!key) throw new Error('OpenAI API key is not configured.');
+
+  const res = await fetch(OPENAI_MODELS_URL, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Failed to list OpenAI models (${res.status}).`);
+  }
+
+  const json = await res.json();
+  const ids = (json?.data || []).map((m) => m.id).filter(Boolean);
+  return ids.filter((id) => CHAT_MODEL_RE.test(id) && !NON_CHAT_RE.test(id)).sort();
+}
+
 export async function extractJobInfoWithAI(data) {
   const stored = await chrome.storage.local.get([
     'aiProvider',

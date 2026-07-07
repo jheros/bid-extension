@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import LabeledInput from "../ui/LabeledInput";
+import { useOpenAiModels } from "../../hooks/useOpenAiModels";
 
 const PROVIDER_META = {
   openrouter: {
@@ -40,6 +42,15 @@ export default function SettingsForm({
   const setApiKey = isOpenAI ? setOpenaiApiKey : setDeepseekApiKey;
   const model = isOpenAI ? openaiModel : deepseekModel;
   const setModel = isOpenAI ? setOpenaiModel : setDeepseekModel;
+
+  // OpenAI model list (fetched live from /v1/models via the background worker).
+  const { models, loading, error, reload } = useOpenAiModels();
+
+  // Auto-load when the OpenAI provider is active and a key is present.
+  useEffect(() => {
+    if (isOpenAI && openaiApiKey.trim()) reload(openaiApiKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpenAI]);
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -97,13 +108,61 @@ export default function SettingsForm({
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={meta.keyPlaceholder}
         />
-        <LabeledInput
-          label="Model"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder={meta.modelPlaceholder}
-          small={meta.modelHint}
-        />
+
+        {isOpenAI ? (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Model</label>
+              <button
+                type="button"
+                onClick={() => reload(apiKey)}
+                disabled={!apiKey.trim() || loading}
+                className="text-xs text-blue-600 disabled:text-gray-400"
+              >
+                {loading ? "Loading…" : "Reload models"}
+              </button>
+            </div>
+            {models.length > 0 ? (
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              >
+                {model && !models.includes(model) && (
+                  <option value={model}>{model} (current)</option>
+                )}
+                {models.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder={meta.modelPlaceholder}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            )}
+            <p className="text-xs text-gray-500">
+              {error
+                ? error
+                : !apiKey.trim()
+                  ? "Enter your API key, then Reload to list models."
+                  : meta.modelHint}
+            </p>
+          </div>
+        ) : (
+          <LabeledInput
+            label="Model"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder={meta.modelPlaceholder}
+            small={meta.modelHint}
+          />
+        )}
       </div>
 
       <button

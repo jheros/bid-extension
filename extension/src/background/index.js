@@ -3,7 +3,7 @@ import { getBangkokDateTime, formatAppliedAtForNotification } from '../lib/datet
 import { showNotification } from '../services/notifications.js';
 import { signIn, signOut } from '../services/auth.js';
 import { saveApplication, getApplicationsByCompany } from '../services/applications.js';
-import { extractJobInfoWithAI } from '../services/ai/extractor.js';
+import { extractJobInfoWithAI, listOpenAiModels } from '../services/ai/extractor.js';
 import { lookupCachedParse, storeCachedParse } from '../services/backend/jobCache.js';
 
 function handleShowNotification(data) {
@@ -76,6 +76,12 @@ function handleCacheStore(data, sendResponse) {
     .catch(() => sendResponse({ success: false }));
 }
 
+function handleListOpenAiModels(data, sendResponse) {
+  listOpenAiModels(data?.apiKey)
+    .then((models) => sendResponse({ success: true, models }))
+    .catch((error) => sendResponse({ success: false, error: error.message }));
+}
+
 function handleCheckSameCompany(data, sendResponse) {
   const company = data?.company?.trim();
   const profileId = data?.profileId || null;
@@ -123,6 +129,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       return true;
     case MESSAGE_TYPES.CACHE_STORE:
       handleCacheStore(request.data || {}, sendResponse);
+      return true;
+    case MESSAGE_TYPES.LIST_OPENAI_MODELS:
+      handleListOpenAiModels(request.data || {}, sendResponse);
       return true;
     case MESSAGE_TYPES.CHECK_SAME_COMPANY:
       handleCheckSameCompany(request.data || {}, sendResponse);
